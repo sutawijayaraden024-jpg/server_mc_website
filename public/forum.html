@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forum - Server_MC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .forum-container {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 30px;
+      margin-top: 40px;
+    }
+
+    .forum-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .forum-categories {
+      background: rgba(212, 175, 55, 0.05);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .forum-categories h3 {
+      margin-bottom: 15px;
+      color: var(--gold-primary);
+    }
+
+    .category-button {
+      display: block;
+      width: 100%;
+      padding: 12px 15px;
+      margin-bottom: 8px;
+      background: rgba(212, 175, 55, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      color: var(--white-primary);
+      border-radius: 8px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: var(--font-body);
+      font-size: 14px;
+    }
+
+    .category-button:hover,
+    .category-button.active {
+      background: rgba(212, 175, 55, 0.2);
+      border-color: var(--gold-primary);
+      color: var(--gold-primary);
+    }
+
+    .forum-threads-section {
+      background: rgba(212, 175, 55, 0.05);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .forum-header {
+      background: rgba(212, 175, 55, 0.1);
+      padding: 20px;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .forum-header h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .forum-stats {
+      display: flex;
+      gap: 30px;
+      font-size: 14px;
+      color: var(--gray-muted);
+    }
+
+    .forum-stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .forum-stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--gold-primary);
+    }
+
+    .thread-item {
+      padding: 20px;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .thread-item:hover {
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    .thread-item:last-child {
+      border-bottom: none;
+    }
+
+    .thread-content {
+      display: flex;
+      gap: 15px;
+    }
+
+    .thread-icon {
+      font-size: 28px;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(212, 175, 55, 0.1);
+      border-radius: 8px;
+    }
+
+    .thread-info h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: var(--gold-primary);
+    }
+
+    .thread-info p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--gray-muted);
+      text-decoration: none;
+      border: none;
+    }
+
+    .thread-info p strong {
+      text-decoration: none;
+      border: none;
+    }
+
+    .thread-stats {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .thread-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .thread-stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gold-primary);
+    }
+
+    .thread-stat-label {
+      color: var(--gray-muted);
+      font-size: 11px;
+    }
+
+    .new-thread-btn {
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray-muted);
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+
+    .thread-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(212, 175, 55, 0.2);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--gold-primary);
+      margin-top: 8px;
+    }
+
+    .thread-badge.solved {
+      background: rgba(76, 175, 80, 0.2);
+      border-color: rgba(76, 175, 80, 0.3);
+      color: #4cb050;
+    }
+
+    .thread-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .thread-modal.active {
+      display: flex;
+    }
+
+    .thread-modal-content {
+      background: var(--black-primary);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .thread-modal-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: var(--gold-primary);
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--gold-primary);
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      background: rgba(212, 175, 55, 0.05);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 8px;
+      color: var(--white-primary);
+      font-family: var(--font-body);
+      font-size: 14px;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 150px;
+    }
+
+    @media (max-width: 768px) {
+      .forum-container {
+        grid-template-columns: 1fr;
+      }
+
+      .thread-item {
+        grid-template-columns: 1fr;
+      }
+
+      .forum-stats {
+        flex-wrap: wrap;
+        gap: 15px;
+      }
+
+      .thread-stats {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="auth-overlay-forum" class="auth-overlay hidden">
+    <div class="auth-overlay-card">
+      <h2>Akses Terbatas</h2>
+      <p>Forum hanya bisa dibuka oleh pemain yang sudah terdaftar. Silakan login atau register terlebih dahulu untuk melanjutkan.</p>
+      <div class="auth-overlay-buttons">
+        <button class="btn btn-primary" onclick="window.location.href='index.html?page=login'">Login</button>
+        <button class="btn btn-secondary" onclick="window.location.href='index.html?page=register'">Register</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">S</div>
+          <div class="logo-text">
+            <h1>Server_MC</h1>
+            <p>Minecraft Network</p>
+          </div>
+        </div>
+
+        <nav id="nav-menu">
+          <a href="index.html">Beranda</a>
+          <a href="index.html?page=server">Server</a>
+          <a href="index.html?page=update">Update</a>
+          <a href="index.html?page=event">Event</a>
+          <a href="index.html?page=komunitas">Komunitas</a>
+        </nav>
+
+        <div class="auth-buttons" id="auth-buttons">
+          <button class="btn btn-ghost" onclick="window.location.href='index.html?page=login'">Login</button>
+          <button class="btn btn-primary" onclick="window.location.href='index.html?page=register'">Register</button>
+        </div>
+
+        <div class="auth-buttons hidden" id="user-menu-container">
+          <div class="user-menu">
+            <button class="user-menu-button" onclick="toggleUserMenu(); return false;">
+              <span id="user-display-name">User</span> ▼
+            </button>
+            <div class="dropdown-menu" id="user-dropdown">
+              <a href="#">Member Directory</a>
+              <a href="#" id="admin-panel-link" class="hidden">Admin Panel</a>
+              <button onclick="logout(); return false;">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div class="container">
+      <div style="margin-top: 40px; margin-bottom: 40px;">
+        <h1>Forum Diskusi</h1>
+        <p style="color: var(--gray-muted); margin-top: 10px;">Tempat untuk berbagi tips, bertanya, meminta bantuan, dan berdiskusi dengan komunitas Server_MC.</p>
+      </div>
+
+      <div class="new-thread-btn">
+        <button class="btn btn-primary" onclick="openNewThreadModal(); return false;">+ Buat Thread Baru</button>
+      </div>
+
+      <div class="forum-container">
+        <!-- Sidebar -->
+        <aside class="forum-sidebar">
+          <div class="forum-categories">
+            <h3>📂 Kategori</h3>
+            <button class="category-button active" onclick="filterThreads('all'); return false;">Semua Thread</button>
+            <button class="category-button" onclick="filterThreads('tips'); return false;">💡 Tips & Trik</button>
+            <button class="category-button" onclick="filterThreads('bantuan'); return false;">🆘 Bantuan</button>
+            <button class="category-button" onclick="filterThreads('diskusi'); return false;">💬 Diskusi</button>
+            <button class="category-button" onclick="filterThreads('showcase'); return false;">🎨 Showcase</button>
+            <button class="category-button" onclick="filterThreads('bug'); return false;">🐛 Laporkan Bug</button>
+            <button class="category-button" onclick="filterThreads('saran'); return false;">💡 Saran</button>
+          </div>
+
+          <div class="forum-categories">
+            <h3>📊 Statistik Forum</h3>
+            <div style="padding: 10px 0;">
+              <div>
+                <div style="font-size: 28px; font-weight: 600; color: var(--gold-primary);" id="total-threads">0</div>
+                <div style="font-size: 12px; color: var(--gray-muted);">Total Thread</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div>
+          <div class="forum-threads-section">
+            <div class="forum-header">
+              <h2 id="category-title">Semua Thread</h2>
+            </div>
+            
+            <div id="threads-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- New Thread Modal -->
+  <div id="new-thread-modal" class="thread-modal">
+    <div class="thread-modal-content">
+      <button class="thread-modal-close" onclick="closeNewThreadModal(); return false;">×</button>
+      <h2 style="margin-bottom: 30px;">Buat Thread Baru</h2>
+      
+      <form onsubmit="handleCreateThread(event)">
+        <div class="form-group">
+          <label for="thread-title">Judul Thread</label>
+          <input type="text" id="thread-title" required placeholder="Ketik judul thread Anda...">
+        </div>
+
+        <div class="form-group">
+          <label for="thread-category">Kategori</label>
+          <select id="thread-category" required>
+            <option value="">Pilih Kategori</option>
+            <option value="tips">💡 Tips & Trik</option>
+            <option value="bantuan">🆘 Bantuan</option>
+            <option value="diskusi">💬 Diskusi</option>
+            <option value="showcase">🎨 Showcase</option>
+            <option value="bug">🐛 Laporkan Bug</option>
+            <option value="saran">💡 Saran</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="thread-content">Konten</label>
+          <textarea id="thread-content" required placeholder="Tulis konten thread Anda di sini..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Buat Thread</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Sample data - thread akan disimpan di localStorage
+    let currentCategory = 'all';
+    let threads = [];
+
+    // Load threads from localStorage
+    function loadThreads() {
+      const saved = localStorage.getItem('forumThreads');
+      if (saved) {
+        threads = JSON.parse(saved);
+      } else {
+        // Sample threads
+        threads = [
+          {
+            id: 1,
+            title: 'Bagaimana cara mendapatkan ranking tertinggi?',
+            category: 'tips',
+            author: 'Ra172',
+            content: 'Aku pengin tahu strategi untuk mendapatkan ranking tertinggi di server ini. Ada yang bisa bantu?',
+            replies: 12,
+            created: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            lastReply: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+            solved: false
+          },
+          {
+            id: 2,
+            title: 'Bantuan: Server lag saat main',
+            category: 'bantuan',
+            author: 'Ra172',
+            content: 'Setiap kali saya main, server selalu lag. Bagaimana cara mengatasi ini? Koneksi saya sudah stabil.',
+            replies: 8,
+            created: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+            lastReply: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            solved: true
+          },
+          {
+            id: 3,
+            title: 'Showcase: Base Futuristik saya',
+            category: 'showcase',
+            author: 'Ra172',
+            content: 'Akhirnya selesai! Butuh 3 minggu untuk membangun base futuristik ini. Semoga kalian suka!',
+            replies: 23,
+            created: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+            lastReply: new Date(Date.now() - 12 * 60 * 60 * 1000),
+            solved: false
+          },
+          {
+            id: 4,
+            title: 'Bug: Item hilang setelah disconnect',
+            category: 'bug',
+            author: 'Ra172',
+            content: 'Ketika saya disconnect, semua item di inventory hilang. Ini sudah terjadi 2 kali. Mohon segera diperbaiki.',
+            replies: 5,
+            created: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+            lastReply: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+            solved: false
+          }
+        ];
+        saveThreads();
+      }
+      renderThreads();
+      updateStats();
+    }
+
+    function saveThreads() {
+      localStorage.setItem('forumThreads', JSON.stringify(threads));
+    }
+
+    // Hitung views berdasarkan logika (waktu thread dibuat)
+    function getThreadViews(thread) {
+      const hoursOld = (Date.now() - thread.created) / (1000 * 60 * 60);
+      const baseViews = 10 + thread.replies * 5; // Base views dari replies
+      const views = Math.floor(baseViews + (hoursOld * 15)); // +15 views per jam
+      return Math.max(baseViews, views);
+    }
+
+    function renderThreads() {
+      const threadsList = document.getElementById('threads-list');
+      let filtered = threads;
+
+      if (currentCategory !== 'all') {
+        filtered = threads.filter(t => t.category === currentCategory);
+      }
+
+      if (filtered.length === 0) {
+        threadsList.innerHTML = '<div class="empty-state"><p>Tidak ada thread di kategori ini</p></div>';
+        return;
+      }
+
+      threadsList.innerHTML = filtered.map(thread => `
+        <div class="thread-item" onclick="viewThread(${thread.id}); return false;">
+          <div class="thread-content">
+            <div class="thread-icon">${getCategoryIcon(thread.category)}</div>
+            <div class="thread-info">
+              <h3>${thread.title}</h3>
+              <p>oleh <strong>Ra172</strong> • ${formatDate(thread.created)}</p>
+            </div>
+          </div>
+          <div class="thread-stats">
+            <div class="thread-stat">
+              <div class="thread-stat-label">Update</div>
+              <div class="thread-stat-value" style="font-size: 12px;">${formatDate(thread.lastReply)}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getCategoryIcon(category) {
+      const icons = {
+        'tips': '💡',
+        'bantuan': '🆘',
+        'diskusi': '💬',
+        'showcase': '🎨',
+        'bug': '🐛',
+        'saran': '💡'
+      };
+      return icons[category] || '📝';
+    }
+
+    function getCategoryName(category) {
+      const names = {
+        'tips': 'Tips & Trik',
+        'bantuan': 'Bantuan',
+        'diskusi': 'Diskusi',
+        'showcase': 'Showcase',
+        'bug': 'Laporkan Bug',
+        'saran': 'Saran'
+      };
+      return names[category] || 'Semua Thread';
+    }
+
+    function filterThreads(category) {
+      currentCategory = category;
+      document.querySelectorAll('.category-button').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      const title = category === 'all' ? 'Semua Thread' : getCategoryName(category);
+      document.getElementById('category-title').textContent = title;
+      renderThreads();
+    }
+
+    function formatDate(date) {
+      const now = new Date();
+      const diff = now - date;
+      const seconds = Math.floor(diff / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (days > 0) return `${days}h ${days === 1 ? 'lalu' : 'lalu'}`;
+      if (hours > 0) return `${hours}j lalu`;
+      if (minutes > 0) return `${minutes}m lalu`;
+      return 'Baru saja';
+    }
+
+    function updateStats() {
+      document.getElementById('total-threads').textContent = threads.length;
+    }
+
+    function openNewThreadModal() {
+      const user = localStorage.getItem('currentUser');
+      if (!user) {
+        alert('Anda harus login untuk membuat thread');
+        window.location.href = 'index.html?page=login';
+        return;
+      }
+      document.getElementById('new-thread-modal').classList.add('active');
+    }
+
+    function closeNewThreadModal() {
+      document.getElementById('new-thread-modal').classList.remove('active');
+      document.getElementById('thread-title').value = '';
+      document.getElementById('thread-category').value = '';
+      document.getElementById('thread-content').value = '';
+    }
+
+    function handleCreateThread(event) {
+      event.preventDefault();
+      const title = document.getElementById('thread-title').value;
+      const category = document.getElementById('thread-category').value;
+      const content = document.getElementById('thread-content').value;
+      const user = JSON.parse(localStorage.getItem('currentUser'));
+
+      const newThread = {
+        id: Math.max(...threads.map(t => t.id), 0) + 1,
+        title,
+        category,
+        author: 'Ra172',
+        content,
+        replies: 0,
+        created: new Date(),
+        lastReply: new Date(),
+        solved: false
+      };
+
+      threads.unshift(newThread);
+      saveThreads();
+      renderThreads();
+      updateStats();
+      closeNewThreadModal();
+      alert('Thread berhasil dibuat!');
+    }
+
+    function viewThread(id) {
+      const thread = threads.find(t => t.id === id);
+      if (thread) {
+        alert(`Thread: ${thread.title}\n\nAuthor: ${thread.author}\n\n${thread.content}`);
+      }
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', loadThreads);
+  </script>
+</body>
+</html>

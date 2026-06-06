@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server_MC - Minecraft Network</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="toast-message" class="toast hidden"></div>
+  <div id="auth-overlay" class="auth-overlay hidden">
+    <div class="auth-overlay-card">
+      <h2>Akses Terbatas</h2>
+      <p>Halaman ini hanya bisa dibuka oleh pemain yang sudah terdaftar. Silakan login atau register terlebih dahulu untuk melanjutkan.</p>
+      <div class="auth-overlay-buttons">
+        <button class="btn btn-primary" onclick="navigateTo('login'); hideAuthOverlay(); return false;">Login</button>
+        <button class="btn btn-secondary" onclick="navigateTo('register'); hideAuthOverlay(); return false;">Register</button>
+      </div>
+      <button class="overlay-close" onclick="hideAuthOverlay(); return false;">Tutup</button>
+    </div>
+  </div>
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">S</div>
+          <div class="logo-text">
+            <h1>Server_MC</h1>
+            <p>Minecraft Network</p>
+          </div>
+        </div>
+
+        <nav id="nav-menu">
+          <a href="#" onclick="navigateTo('home'); return false;">Beranda</a>
+          <a href="#" onclick="navigateTo('server'); return false;">Server</a>
+          <a href="#" onclick="navigateTo('update'); return false;">Update</a>
+          <a href="#" onclick="navigateTo('event'); return false;">Event</a>
+          <a href="#" onclick="navigateTo('komunitas'); return false;">Komunitas</a>
+        </nav>
+
+        <div class="auth-buttons" id="auth-buttons">
+          <button class="btn btn-ghost" onclick="navigateTo('login'); return false;">Login</button>
+          <button class="btn btn-primary" onclick="navigateTo('register'); return false;">Register</button>
+        </div>
+
+        <div class="auth-buttons hidden" id="user-menu-container">
+          <div class="user-menu">
+            <button class="user-menu-button" onclick="toggleUserMenu(); return false;">
+              <span id="user-display-name">User</span> ▼
+            </button>
+            <div class="dropdown-menu" id="user-dropdown">
+              <div class="dropdown-info">
+                <p class="dropdown-label">Akun Saat Ini</p>
+                <p class="dropdown-user-email" id="user-email-display">user@example.com</p>
+                <span class="user-role-badge" id="user-role-display">User</span>
+              </div>
+              <a href="#" onclick="navigateTo('members'); return false;">Member Directory</a>
+              <a href="#" id="admin-panel-link" class="hidden" onclick="navigateTo('admin'); return false;">Admin Panel</a>
+              <button class="btn btn-danger" onclick="deleteAccount(); return false;">Hapus Akun</button>
+              <button onclick="logout(); return false;">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Pages Container -->
+  <main>
+    <!-- Home Page -->
+    <div id="home" class="page active">
+      <div class="container">
+        <section class="hero">
+          <div class="hero-content">
+            <h1>Bangun Dunia <span class="gold-text">Bersama</span></h1>
+            <p>Server Minecraft Bedrock terbaik dengan komunitas solid, update rutin, dan gameplay yang stabil untuk pengalaman bermain yang tak terlupakan.</p>
+            <div class="hero-buttons">
+              <button class="btn btn-primary" onclick="scrollToSection('cta-section'); return false;">Mulai Sekarang</button>
+              <button class="btn btn-secondary" onclick="navigateTo('server'); return false;">Lihat Server</button>
+            </div>
+            <div class="hero-stats">
+              <div class="stat">
+                <div class="stat-value">2</div>
+                <div class="stat-label">Server Inti</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value" id="hero-uptime">85%</div>
+                <div class="stat-label">Uptime</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value" id="hero-player-count">0</div>
+                <div class="stat-label">Pemain</div>
+              </div>
+            </div>
+          </div>
+          <div class="hero-visual">
+            Minecraft Server Preview
+          </div>
+        </section>
+
+        <section class="features">
+          <div class="section-header">
+            <h2>Mengapa Server_MC?</h2>
+            <p>Kami menawarkan pengalaman bermain Minecraft yang komprehensif dengan fokus pada stabilitas, komunitas, dan inovasi.</p>
+          </div>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">⚡</div>
+              <h3>Server Stabil</h3>
+              <p>Performa tinggi dengan uptime 85% untuk pengalaman bermain yang andal di development environment.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">👥</div>
+              <h3>Komunitas Solid</h3>
+              <p>Bergabunglah dengan pemain yang passionate dan saling mendukung.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">✨</div>
+              <h3>Update Rutin</h3>
+              <p>Konten baru dan perbaikan setiap minggu untuk menjaga kesegaran gameplay.</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="cta-section" id="cta-section">
+          <h2>Siap Bergabung?</h2>
+          <p>Daftarkan akun Anda sekarang dan mulai petualangan di Server_MC. Gratis, mudah, dan cepat!</p>
+          <div class="cta-buttons">
+            <button class="btn btn-primary" onclick="navigateTo('register'); return false;">Daftar Sekarang</button>
+            <button class="btn btn-secondary" onclick="navigateTo('login'); return false;">Sudah Punya Akun? Login</button>
+          </div>
+        </div>
+
+        <section class="auth-quick-section">
+          <div class="section-header">
+            <h2>Daftar atau Masuk Cepat</h2>
+            <p>Pilih metode login terbaik: Google, Microsoft, atau email + password dengan kode verifikasi dari kami.</p>
+          </div>
+          <div class="auth-quick-grid">
+            <div class="auth-card">
+              <h3>Login Cepat</h3>
+              <p>Masuk instan ke akun Anda dengan Google, Microsoft, atau email/password.</p>
+              <button class="btn btn-primary" onclick="navigateTo('login'); return false;">Login Sekarang</button>
+            </div>
+            <div class="auth-card">
+              <h3>Register Baru</h3>
+              <p>Buat akun baru dengan email dan password, lalu verifikasi kode yang kami kirim.</p>
+              <button class="btn btn-secondary" onclick="navigateTo('register'); return false;">Daftar Sekarang</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="player-data-section">
+          <div class="section-header">
+            <h2>Data Pemain Aktif</h2>
+            <p>Semua pemain yang sedang login akan muncul di sini. Data akan otomatis hilang ketika mereka logout.</p>
+          </div>
+          <div class="player-stats-grid">
+            <div class="stat-card">
+              <p class="stat-card-label">Total Akun Terdaftar</p>
+              <p class="stat-card-value" id="player-count-registered">0</p>
+            </div>
+            <div class="stat-card">
+              <p class="stat-card-label">Pemain Aktif Saat Ini</p>
+              <p class="stat-card-value" id="player-count-online">0</p>
+            </div>
+          </div>
+          <div class="registered-list-section">
+            <h3>Nama Akun Terdaftar</h3>
+            <ul id="registered-player-list" class="registered-player-list"></ul>
+          </div>
+          <div id="player-cards" class="player-cards"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Server Page -->
+    <div id="server" class="page">
+      <div class="container">
+        <h1>Informasi Server</h1>
+        <p style="margin-top: 20px; color: var(--gray-muted);">Pelajari detail teknis, aturan, dan cara bergabung dengan server kami.</p>
+        
+        <section class="features" style="margin-top: 40px;">
+          <div class="features-grid">
+            <div class="feature-card">
+              <h3>Spesifikasi Server</h3>
+              <p>Server Bedrock dengan RAM 16GB dan jaringan stabil untuk pengalaman bermain yang nyaman.</p>
+            </div>
+            <div class="feature-card">
+              <h3>Aturan Server</h3>
+              <p>Dilarang griefing, hacking, dan spam. Hormati sesama pemain dan ikuti peraturan yang telah ditetapkan untuk menjaga lingkungan yang positif.</p>
+            </div>
+            <div class="feature-card">
+              <h3>Cara Bergabung</h3>
+              <p>Daftar akun, buka Minecraft Bedrock, tambahkan server dengan IP: play.servermc.net, dan mulai bermain!</p>
+            </div>
+            <div class="feature-card">
+              <h3>Support 24/7</h3>
+              <p>Tim support kami siap membantu Anda kapan saja. Hubungi melalui Discord atau email untuk bantuan teknis.</p>
+            </div>
+            <div class="feature-card">
+              <h3>Backup Rutin</h3>
+              <p>Data Anda dijamin aman dengan backup otomatis setiap hari. Tidak perlu khawatir kehilangan progress.</p>
+            </div>
+            <div class="feature-card">
+              <h3>Anti-Cheat System</h3>
+              <p>Sistem anti-cheat canggih memastikan fair play untuk semua pemain. Cheater akan langsung diblokir.</p>
+            </div>
+            <div class="feature-card">
+              <h3>Cloudflare Only</h3>
+              <p>Semua koneksi server berjalan melalui Cloudflare untuk proteksi DDoS, performa stabil, dan latency rendah.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Update Page -->
+    <div id="update" class="page">
+      <div class="container">
+        <h1>Update Terbaru</h1>
+        <p style="margin-top: 20px; color: var(--gray-muted);">Lihat semua update, patch notes, dan fitur baru yang telah dirilis.</p>
+        
+        <section class="features" style="margin-top: 40px;">
+          <div class="features-grid">
+            <div class="feature-card">
+              <h3>Update v2.5.0 - Dunia Baru</h3>
+              <p><strong>Rilis:</strong> 1 Juni 2026</p>
+              <p style="margin-top: 10px;">Menambahkan 3 dunia baru dengan biome eksklusif, 50+ item baru, dan sistem quest yang lebih interaktif.</p>
+            </div>
+            <div class="feature-card">
+              <h3>Update v2.4.5 - Balance Patch</h3>
+              <p><strong>Rilis:</strong> 15 Mei 2026</p>
+              <p style="margin-top: 10px;">Penyeimbangan ekonomi, perbaikan bug pada sistem farming, dan peningkatan performa server.</p>
+            </div>
+            <div class="feature-card">
+              <h3>Update v2.4.0 - Sistem Clan</h3>
+              <p><strong>Rilis:</strong> 1 Mei 2026</p>
+              <p style="margin-top: 10px;">Fitur baru sistem clan dengan level, treasury, dan quest khusus untuk meningkatkan kolaborasi pemain.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Event Page -->
+    <div id="event" class="page">
+      <div class="container">
+        <h1>Event & Kompetisi</h1>
+        <p style="margin-top: 20px; color: var(--gray-muted);">Ikuti event menarik dan kompetisi dengan hadiah menggiurkan.</p>
+        
+        <section class="features" style="margin-top: 40px;">
+          <div class="features-grid">
+            <div class="feature-card">
+              <h3>Build Competition 2026</h3>
+              <p><strong>Tanggal:</strong> Akan diumumkan oleh admin.</p>
+              <p style="margin-top: 10px;">Kompetisi membangun dengan tema "Futuristik". Hadiah utama: 1 juta rupiah dan item eksklusif!</p>
+            </div>
+            <div class="feature-card">
+              <h3>Survival Challenge</h3>
+              <p><strong>Tanggal:</strong> Akan diumumkan oleh admin.</p>
+              <p style="margin-top: 10px;">Tantangan survival dengan hadiah untuk top 10 pemain yang bertahan paling lama.</p>
+            </div>
+            <div class="feature-card">
+              <h3>PvP Tournament</h3>
+              <p><strong>Tanggal:</strong> Akan diumumkan oleh admin.</p>
+              <p style="margin-top: 10px;">Turnamen PvP 1v1 dengan sistem bracket. Hadiah untuk juara 1, 2, dan 3!</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Komunitas Page -->
+    <div id="komunitas" class="page">
+      <div class="container">
+        <h1>Komunitas</h1>
+        <p style="margin-top: 20px; color: var(--gray-muted);">Bergabunglah dengan diskusi komunitas, bagikan tips, dan showcase kreasi Anda.</p>
+        
+        <div class="posts-container" style="margin-top: 40px;">
+          <aside class="posts-sidebar">
+            <div class="stats-box">
+              <div class="stat-item">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                  <p>Total Member</p>
+                  <p id="total-members">0</p>
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-icon">📝</div>
+                <div class="stat-info">
+                  <p>Total Post</p>
+                  <p id="total-posts">0</p>
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-icon">🟢</div>
+                <div class="stat-info">
+                  <p>Member Aktif</p>
+                  <p id="total-active-members">0</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="category-filter">
+              <h3>Kategori</h3>
+              <button onclick="navigateToCommunityCategory('all'); return false;">Semua Post</button>
+              <button onclick="navigateToCommunityCategory('Diskusi'); return false;">Diskusi</button>
+              <button onclick="navigateToCommunityCategory('Tips & Trik'); return false;">Tips & Trik</button>
+              <button onclick="navigateToCommunityCategory('Showcase'); return false;">Showcase</button>
+              <button onclick="navigateToCommunityCategory('Bantuan'); return false;">Bantuan</button>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="showCreatePostForm(); return false;">Buat Post Baru</button>
+          </aside>
+
+          <div>
+            <div id="posts-list" class="posts-list">
+              <div class="loading">
+                <div class="spinner"></div>
+                <p>Memuat post...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members Page -->
+    <div id="members" class="page">
+      <div class="container">
+        <h1>Member Directory</h1>
+        <p style="margin-top: 20px; color: var(--gray-muted);">Lihat daftar semua member yang terdaftar di Server_MC.</p>
+        
+        <div id="members-list" class="members-grid" style="margin-top: 40px;">
+          <div class="loading">
+            <div class="spinner"></div>
+            <p>Memuat member...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Page -->
+    <div id="login" class="page">
+      <div class="auth-container">
+        <div class="auth-form">
+          <button class="btn btn-ghost back-button" type="button" onclick="navigateTo('home'); return false;">← Kembali</button>
+          <h2>Login</h2>
+          <div id="login-error" class="error-message hidden"></div>
+          <div class="social-login">
+            <button class="btn btn-social google" type="button" onclick="simulateOAuthLogin('Google');">Login dengan Google</button>
+            <button class="btn btn-social microsoft" type="button" onclick="simulateOAuthLogin('Microsoft');">Login dengan Microsoft</button>
+          </div>
+          <div class="divider">atau masuk dengan email</div>
+          <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+              <label for="login-email">Email</label>
+              <input type="email" id="login-email" required>
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" required>
+            </div>
+            <div class="form-group code-group" id="login-code-group">
+              <label for="login-code">Kode Verifikasi</label>
+              <div class="code-send-row">
+                <input type="text" id="login-code" maxlength="6" placeholder="Masukkan kode">
+                <button type="button" class="btn btn-secondary" onclick="handleSendLoginCode();">Kirim Kode</button>
+              </div>
+            </div>
+            <div id="login-verification-info" class="verification-info hidden"></div>
+            <button type="submit" class="btn btn-primary">Login</button>
+          </form>
+          <div class="auth-link">
+            Belum punya akun? <a href="#" onclick="navigateTo('register'); return false;">Daftar di sini</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Page -->
+    <div id="register" class="page">
+      <div class="auth-container">
+        <div class="auth-form">
+          <button class="btn btn-ghost back-button" type="button" onclick="navigateTo('home'); return false;">← Kembali</button>
+          <h2>Register</h2>
+          <div id="register-error" class="error-message hidden"></div>
+          <div class="social-login">
+            <button class="btn btn-social google" type="button" onclick="simulateOAuthLogin('Google');">Daftar dengan Google</button>
+            <button class="btn btn-social microsoft" type="button" onclick="simulateOAuthLogin('Microsoft');">Daftar dengan Microsoft</button>
+          </div>
+          <div class="divider">atau daftar dengan email</div>
+          <form onsubmit="handleRegister(event)">
+            <div class="form-group">
+              <label for="register-name">Nama</label>
+              <input type="text" id="register-name" required>
+            </div>
+            <div class="form-group">
+              <label for="register-email">Email</label>
+              <input type="email" id="register-email" required>
+            </div>
+            <div class="form-group">
+              <label for="register-password">Password</label>
+              <input type="password" id="register-password" required>
+            </div>
+            <div class="form-group code-group" id="register-code-group">
+              <label for="register-code">Kode Verifikasi</label>
+              <div class="code-send-row">
+                <input type="text" id="register-code" maxlength="6" placeholder="Masukkan kode">
+                <button type="button" class="btn btn-secondary" onclick="handleSendRegisterCode();">Kirim Kode</button>
+              </div>
+            </div>
+            <div id="register-verification-info" class="verification-info hidden"></div>
+            <button type="submit" class="btn btn-primary">Register</button>
+          </form>
+          <div class="auth-link">
+            Sudah punya akun? <a href="#" onclick="navigateTo('login'); return false;">Login di sini</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin" class="page">
+      <div class="container">
+        <h1>Admin Panel</h1>
+        <p style="margin-top: 20px; color: var(--gray-muted);">Kelola konten dan pengaturan website.</p>
+        
+        <div style="margin-top: 40px;">
+          <h2>Buat Post Baru</h2>
+          <div id="admin-error" class="error-message hidden"></div>
+          <div id="admin-success" class="success-message hidden"></div>
+          <form onsubmit="handleCreatePost(event)" style="margin-top: 20px;">
+            <div class="form-group">
+              <label for="post-title">Judul</label>
+              <input type="text" id="post-title" required>
+            </div>
+            <div class="form-group">
+              <label for="post-category">Kategori</label>
+              <select id="post-category" required>
+                <option value="Diskusi">Diskusi</option>
+                <option value="Tips & Trik">Tips & Trik</option>
+                <option value="Showcase">Showcase</option>
+                <option value="Bantuan">Bantuan</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="post-content">Konten</label>
+              <textarea id="post-content" rows="6" required></textarea>
+            </div>
+            <div class="form-group">
+              <label for="post-tags">Tags (pisahkan dengan koma)</label>
+              <input type="text" id="post-tags">
+            </div>
+            <button type="submit" class="btn btn-primary">Buat Post</button>
+          </form>
+        </div>
+
+        <!-- Admin Data Section -->
+        <div style="margin-top: 60px; border-top: 2px solid var(--gold); padding-top: 40px;">
+          <h2>Data Akun Admin</h2>
+          <div class="admin-data-card" style="margin-top: 30px; background: rgba(255, 215, 0, 0.1); padding: 30px; border: 2px solid var(--gold); border-radius: 10px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-bottom: 30px;">
+              <div>
+                <p style="color: var(--gray-muted); margin-bottom: 10px;">Nama Admin</p>
+                <p style="font-size: 1.4em; font-weight: bold; color: var(--gold);">Ra172</p>
+              </div>
+              <div>
+                <p style="color: var(--gray-muted); margin-bottom: 10px;">Email</p>
+                <p style="font-size: 1.1em; color: #e0e0e0; word-break: break-all;">scarlettruiss@gmail.com</p>
+              </div>
+              <div>
+                <p style="color: var(--gray-muted); margin-bottom: 10px;">Status</p>
+                <p style="font-size: 1.1em; color: var(--gold); font-weight: bold;">⭐ Admin Utama</p>
+              </div>
+            </div>
+            
+            <div style="border-top: 1px solid var(--gold); padding-top: 20px;">
+              <h3 style="color: var(--gold); margin-top: 0;">Statistik Admin</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+                <div style="background: rgba(0, 0, 0, 0.5); padding: 20px; border-radius: 8px; text-align: center;">
+                  <p style="color: var(--gray-muted); margin: 0 0 10px 0;">Total Pemain</p>
+                  <p style="font-size: 2em; font-weight: bold; color: var(--gold); margin: 0;" id="admin-total-players">1</p>
+                </div>
+                <div style="background: rgba(0, 0, 0, 0.5); padding: 20px; border-radius: 8px; text-align: center;">
+                  <p style="color: var(--gray-muted); margin: 0 0 10px 0;">Pemain Aktif</p>
+                  <p style="font-size: 2em; font-weight: bold; color: var(--gold); margin: 0;" id="admin-active-players">1</p>
+                </div>
+                <div style="background: rgba(0, 0, 0, 0.5); padding: 20px; border-radius: 8px; text-align: center;">
+                  <p style="color: var(--gray-muted); margin: 0 0 10px 0;">Total Post</p>
+                  <p style="font-size: 2em; font-weight: bold; color: var(--gold); margin: 0;" id="admin-total-posts">0</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div>
+        <h3>Server_MC</h3>
+        <p style="color: var(--gray-muted); font-size: 14px;">Komunitas Minecraft Bedrock terbaik dengan server stabil dan update rutin.</p>
+      </div>
+      <div>
+        <h3>Navigasi</h3>
+        <ul>
+          <li><a href="#" onclick="navigateTo('home'); return false;">Beranda</a></li>
+          <li><a href="#" onclick="navigateTo('server'); return false;">Server</a></li>
+          <li><a href="#" onclick="navigateTo('update'); return false;">Update</a></li>
+          <li><a href="#" onclick="navigateTo('event'); return false;">Event</a></li>
+        </ul>
+      </div>
+      <div id="footer-community-links">
+        <h3>Komunitas</h3>
+        <ul>
+          <li><a href="forum.html">Forum</a></li>
+          <li><a href="#" onclick="navigateTo('members'); return false;">Member</a></li>
+          <li><a href="https://discord.gg/Q2Ykqnvq" target="_blank" rel="noopener noreferrer">Discord</a></li>
+          <li><a href="https://chat.whatsapp.com/Hu4pnNffDcwEncYkojr0xX" target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Legal</h3>
+        <ul>
+          <li><a href="privacy.html">Privacy</a></li>
+          <li><a href="terms.html">Terms</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Server_MC Network. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Font Editor (Admin Only) -->
+  <button class="font-editor-toggle hidden" id="font-editor-toggle" onclick="toggleFontEditor(); return false;">✏️</button>
+  <button class="scroll-to-top hidden" id="scrollToTopButton" onclick="scrollToTop(); return false;">↑</button>
+  <div class="font-editor hidden" id="font-editor">
+    <h3>Font Editor</h3>
+    <div class="font-editor-group">
+      <label>Heading Font</label>
+      <select id="heading-font" onchange="updateFontSettings()">
+        <option value="Playfair Display">Playfair Display</option>
+        <option value="Georgia">Georgia</option>
+        <option value="Times New Roman">Times New Roman</option>
+      </select>
+    </div>
+    <div class="font-editor-group">
+      <label>Body Font</label>
+      <select id="body-font" onchange="updateFontSettings()">
+        <option value="Poppins">Poppins</option>
+        <option value="Arial">Arial</option>
+        <option value="Verdana">Verdana</option>
+      </select>
+    </div>
+    <div class="font-editor-group">
+      <label>Heading Size: <span id="heading-size-value">48</span>px</label>
+      <input type="range" id="heading-size" min="24" max="72" value="48" onchange="updateFontSettings()">
+    </div>
+    <div class="font-editor-group">
+      <label>Body Size: <span id="body-size-value">16</span>px</label>
+      <input type="range" id="body-size" min="12" max="24" value="16" onchange="updateFontSettings()">
+    </div>
+    <div class="font-editor-group">
+      <label>Heading Weight</label>
+      <select id="heading-weight" onchange="updateFontSettings()">
+        <option value="400">Normal</option>
+        <option value="600">Semi-bold</option>
+        <option value="700" selected>Bold</option>
+      </select>
+    </div>
+    <button class="btn btn-secondary" onclick="resetFontSettings(); return false;">Reset</button>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
