@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin — Online Players</title>
+    <style>
+      body { font-family: Arial, sans-serif; background:#111; color:#eee; padding:20px }
+      .card{background:#1b1b1b;padding:12px;border-radius:8px;margin:8px 0}
+      .player-list{display:flex;flex-direction:column;gap:8px}
+    </style>
+  </head>
+  <body>
+    <h1>Online Players (Admin)</h1>
+    <div id="status">Connecting...</div>
+    <div class="player-list" id="players"></div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const serverHost = location.hostname || 'localhost';
+      const socket = io('http://' + serverHost + ':3000');
+      const playersEl = document.getElementById('players');
+      const statusEl = document.getElementById('status');
+
+      socket.on('connect', () => { statusEl.textContent = 'Connected'; socket.emit('who'); });
+      socket.on('disconnect', () => { statusEl.textContent = 'Disconnected'; playersEl.innerHTML=''; });
+      socket.on('players', list => { render(list); });
+      socket.on('player-login', p => { addPlayer(p); });
+      socket.on('player-logout', p => { removePlayer(p.xuid); });
+
+      function render(list){ playersEl.innerHTML=''; list.forEach(addPlayer); }
+      function addPlayer(p){ if(document.getElementById('p-'+p.xuid)) return; const d=document.createElement('div'); d.id='p-'+p.xuid; d.className='card'; d.innerHTML=`<strong>${escapeHtml(p.username)}</strong> <div style="font-size:.9em;color:#bbb">XUID: ${escapeHtml(p.xuid)} — logged ${new Date(p.loginAt).toLocaleTimeString()}</div>`; playersEl.prepend(d); }
+      function removePlayer(xuid){ const el=document.getElementById('p-'+xuid); if(el) el.remove(); }
+      function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    </script>
+  </body>
+</html>
