@@ -1,0 +1,7 @@
+name = "server-mc-website"
+type = "javascript"
+account_id = "0333957e835e4bf528fac6bd17d8e3a6"
+compatibility_date = "2026-06-06"
+
+[site]
+  bucket = "./public"
