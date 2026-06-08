@@ -6,6 +6,7 @@ node_modules
 # Minecraft Server
 *.mcworld
 *.zip
+*.exe
 bedrock_server/lobby/logs/
 bedrock_server/lobby/worlds/*/db/
 
