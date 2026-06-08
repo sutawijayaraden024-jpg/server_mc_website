@@ -1,3 +1,11 @@
 .wrangler/cache
 node_modules
 .DS_Store
+*.mcworld
+*.zip
+bedrock_server/lobby/logs/
+bedrock_server/lobby/worlds/*/db/
+.env
+.env.local
+dist/
+build/

@@ -3,3 +3,12 @@ account_id = "0333957e835e4bf528fac6bd17d8e3a6"
 compatibility_date = "2026-06-06"
 project_name = "server-mc-website"
 pages_build_output_dir = "./public"
+type = "javascript"
+
+[env.production]
+name = "server-mc-website"
+
+[build]
+command = "echo 'Build complete'"
+cwd = "./"
+watch_paths = ["public/**/*.html", "public/**/*.css", "public/**/*.js"]
