@@ -564,39 +564,25 @@ nav a:hover::after {
   line-height: 1.8;
 }
 
-.social-login {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.btn-social {
-  width: 100%;
-  background-color: rgba(255, 255, 255, 0.07);
-  color: var(--white-primary);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-}
-
-.btn-social:hover {
-  background-color: rgba(212, 175, 55, 0.15);
-  color: var(--gold-primary);
-}
-
-.btn-social.google {
-  background-color: rgba(219, 68, 55, 0.08);
-  border-color: rgba(219, 68, 55, 0.25);
-}
-
-.btn-social.microsoft {
-  background-color: rgba(0, 120, 212, 0.08);
-  border-color: rgba(0, 120, 212, 0.25);
-}
-
-.divider {
-  text-align: center;
-  margin: 20px 0;
+.auth-subtitle {
   color: var(--gray-muted);
-  font-size: 13px;
+  margin: -10px 0 20px;
+  line-height: 1.8;
+  font-size: 14px;
+}
+
+.auth-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: var(--gold-primary);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .code-send-row {
@@ -837,6 +823,17 @@ nav a:hover::after {
   color: var(--gray-muted);
   margin-bottom: 15px;
   word-break: break-all;
+}
+
+.member-role {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  color: var(--gold-primary);
+  background-color: rgba(212, 175, 55, 0.08);
+  font-size: 12px;
 }
 
 .member-joined {

@@ -1,0 +1,39 @@
+{
+  "world": "Maharlika_City",
+  "server": "server_lobby",
+  "default_role": "member",
+  "login_spawn": {
+    "x": 951,
+    "y": 48,
+    "z": -574,
+    "command": "tp @s 951 48 -574"
+  },
+  "spawns": {
+    "member": {
+      "x": -2068,
+      "y": 33,
+      "z": -2043,
+      "command": "tp @s -2068 33 -2043"
+    },
+    "admin": {
+      "x": 1600,
+      "y": 31,
+      "z": -241,
+      "command": "tp @s 1600 31 -241"
+    }
+  },
+  "accounts": [
+    {
+      "email": "scarlettruiss@gmail.com",
+      "xuid": "2535433223991124",
+      "minecraft_name": "ruiss971",
+      "role": "admin"
+    },
+
+    { "email": "khumairaputry3@gmail.com",
+      "xuid": "",
+      "minecraft_name": "people1975",
+      "role": "admin"
+    }
+  ]
+}

@@ -139,19 +139,24 @@
 
         <section class="auth-quick-section">
           <div class="section-header">
-            <h2>Daftar atau Masuk Cepat</h2>
-            <p>Pilih metode login terbaik: Google, Microsoft, atau email + password dengan kode verifikasi dari kami.</p>
+            <h2>Akun Server</h2>
+            <p>Daftar dan login untuk dipakai di Maharlika City, server utama yang juga menjadi area lobby dan respawn pemain.</p>
           </div>
           <div class="auth-quick-grid">
             <div class="auth-card">
-              <h3>Login Cepat</h3>
-              <p>Masuk instan ke akun Anda dengan Google, Microsoft, atau email/password.</p>
+              <h3>Login Member</h3>
+              <p>Masuk ke akun yang sudah terdaftar di website untuk membuka akses server.</p>
               <button class="btn btn-primary" onclick="navigateTo('login'); return false;">Login Sekarang</button>
             </div>
             <div class="auth-card">
-              <h3>Register Baru</h3>
-              <p>Buat akun baru dengan email dan password, lalu verifikasi kode yang kami kirim.</p>
+              <h3>Register Akun</h3>
+              <p>Buat akun baru untuk member. Admin dipisahkan lewat role dan daftar khusus.</p>
               <button class="btn btn-secondary" onclick="navigateTo('register'); return false;">Daftar Sekarang</button>
+            </div>
+            <div class="auth-card">
+              <h3>Status Server</h3>
+              <p>Data login akan tersinkron ke server utama melalui backend publik yang aktif saat website dibuka online.</p>
+              <button class="btn btn-ghost" onclick="navigateTo('server'); return false;">Lihat Server</button>
             </div>
           </div>
         </section>
@@ -206,26 +211,26 @@
         <section class="server-list" style="margin-top: 50px;">
           <div class="section-header">
             <h2>Server Kami</h2>
-            <p>Setiap server mendukung Minecraft Bedrock 1.20, 1.21, dan 26.0+ dengan pengalaman yang berbeda.</p>
+            <p>Saat ini Server_MC berpusat pada Maharlika City sebagai dunia utama, tempat lobby, respawn, dan akses awal pemain berada.</p>
           </div>
 
           <div class="features-grid">
             <div class="feature-card">
-              <h3>Immersial Worlds</h3>
-              <p>World 335.32MB dengan petualangan luas, hidden hole misterius, dan jalur teleport ke server lain.</p>
-              <p><strong>Mode:</strong> Exploration, Adventure</p>
+              <h3>Maharlika City</h3>
+              <p>Server utama Server_MC dengan world Maharlika City. Di sinilah pemain memulai perjalanan, respawn, login, dan mengenal sistem server.</p>
+              <p><strong>Fokus:</strong> Main World, Lobby, Respawn</p>
               <a class="btn btn-secondary" href="servers/immersial-worlds/" style="text-decoration: none;">Selengkapnya</a>
             </div>
             <div class="feature-card">
-              <h3>Minigames Server</h3>
-              <p>Dapat diakses melalui hidden hole. Cocok untuk pemain yang suka tantangan kompetitif dan event cepat.</p>
-              <p><strong>Versi:</strong> 1.20 / 1.21 / 26.0+</p>
+              <h3>Rencana Minigames</h3>
+              <p>Mode permainan tambahan yang disiapkan untuk event, tantangan cepat, dan aktivitas komunitas setelah sistem utama stabil.</p>
+              <p><strong>Status:</strong> Dalam Perencanaan</p>
               <a class="btn btn-secondary" href="servers/minigames/" style="text-decoration: none;">Selengkapnya</a>
             </div>
             <div class="feature-card">
-              <h3>Lobby & Respawn</h3>
-              <p>Zona aman untuk respawn, akses portal, dan memulai kembali perjalanan server.</p>
-              <p><strong>Fokus:</strong> Spawn, Tutorial, Gateway</p>
+              <h3>Lobby & Respawn Area</h3>
+              <p>Area aman di dalam Maharlika City untuk respawn, informasi server, dan titik awal sebelum pemain menjelajah lebih jauh.</p>
+              <p><strong>Lokasi:</strong> Bagian dari Maharlika City</p>
               <a class="btn btn-secondary" href="servers/lobby/" style="text-decoration: none;">Selengkapnya</a>
             </div>
           </div>
@@ -242,19 +247,11 @@
         <section class="features" style="margin-top: 40px;">
           <div class="features-grid">
             <div class="feature-card">
-              <h3>Update v2.5.0 - Dunia Baru</h3>
-              <p><strong>Rilis:</strong> 1 Juni 2026</p>
-              <p style="margin-top: 10px;">Menambahkan 3 dunia baru dengan biome eksklusif, 50+ item baru, dan sistem quest yang lebih interaktif.</p>
-            </div>
-            <div class="feature-card">
-              <h3>Update v2.4.5 - Balance Patch</h3>
-              <p><strong>Rilis:</strong> 15 Mei 2026</p>
-              <p style="margin-top: 10px;">Penyeimbangan ekonomi, perbaikan bug pada sistem farming, dan peningkatan performa server.</p>
-            </div>
-            <div class="feature-card">
-              <h3>Update v2.4.0 - Sistem Clan</h3>
-              <p><strong>Rilis:</strong> 1 Mei 2026</p>
-              <p style="margin-top: 10px;">Fitur baru sistem clan dengan level, treasury, dan quest khusus untuk meningkatkan kolaborasi pemain.</p>
+              <h3>Update 0.01 Beta</h3>
+              <p><strong>Status:</strong> Sistem akun lokal sudah tersedia untuk tahap pengujian awal.</p>
+              <p style="margin-top: 10px;">Website sekarang mendukung register, login, role member dan admin, serta pencatatan pemain aktif lewat backend publik ketika situs dibuka online.</p>
+              <p style="margin-top: 10px;">Dashboard pemain juga menampilkan jumlah akun terdaftar, pemain aktif, daftar nama akun, dan statistik komunitas sederhana. Fitur logout dan hapus akun ikut disiapkan agar data online tetap rapi saat pemain keluar.</p>
+              <p style="margin-top: 10px;">Data akun dan sesi ditangani lewat API backend agar website bisa tetap public dan 24/7 tanpa bergantung pada browser lokal.</p>
             </div>
           </div>
         </section>
@@ -362,16 +359,13 @@
 
     <!-- Login Page -->
     <div id="login" class="page">
-      <div class="auth-container">
-        <div class="auth-form">
-          <button class="btn btn-ghost back-button" type="button" onclick="navigateTo('home'); return false;">← Kembali</button>
-          <h2>Login</h2>
-          <div id="login-error" class="error-message hidden"></div>
-          <div class="social-login">
-            <button class="btn btn-social google" type="button" onclick="simulateOAuthLogin('Google');">Login dengan Google</button>
-            <button class="btn btn-social microsoft" type="button" onclick="simulateOAuthLogin('Microsoft');">Login dengan Microsoft</button>
-          </div>
-          <div class="divider">atau masuk dengan email</div>
+        <div class="auth-container">
+          <div class="auth-form">
+            <button class="btn btn-ghost back-button" type="button" onclick="navigateTo('home'); return false;">← Kembali</button>
+            <h2>Login</h2>
+            <p class="auth-subtitle">Masuk dengan akun server yang sudah terdaftar. Admin tetap pakai akun yang sama, hanya role-nya yang berbeda.</p>
+            <div id="login-error" class="error-message hidden"></div>
+          <div class="auth-status-badge" id="auth-bridge-status">Mengecek backend publik...</div>
           <form onsubmit="handleLogin(event)">
             <div class="form-group">
               <label for="login-email">Email</label>
@@ -400,16 +394,13 @@
 
     <!-- Register Page -->
     <div id="register" class="page">
-      <div class="auth-container">
-        <div class="auth-form">
-          <button class="btn btn-ghost back-button" type="button" onclick="navigateTo('home'); return false;">← Kembali</button>
-          <h2>Register</h2>
-          <div id="register-error" class="error-message hidden"></div>
-          <div class="social-login">
-            <button class="btn btn-social google" type="button" onclick="simulateOAuthLogin('Google');">Daftar dengan Google</button>
-            <button class="btn btn-social microsoft" type="button" onclick="simulateOAuthLogin('Microsoft');">Daftar dengan Microsoft</button>
-          </div>
-          <div class="divider">atau daftar dengan email</div>
+        <div class="auth-container">
+          <div class="auth-form">
+            <button class="btn btn-ghost back-button" type="button" onclick="navigateTo('home'); return false;">← Kembali</button>
+            <h2>Register</h2>
+            <p class="auth-subtitle">Buat akun member. Admin tetap dipisahkan lewat role dan akun utama yang sudah ada.</p>
+            <div id="register-error" class="error-message hidden"></div>
+          <div class="auth-status-badge" id="register-bridge-status">Mengecek backend publik...</div>
           <form onsubmit="handleRegister(event)">
             <div class="form-group">
               <label for="register-name">Nama</label>

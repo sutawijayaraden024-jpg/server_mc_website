@@ -1,14 +1,17 @@
 # Cloudflare & Node
 .wrangler/cache
+.wrangler
 node_modules
 .DS_Store
+public/.si.json
 
 # Minecraft Server
 *.mcworld
 *.zip
 *.exe
-bedrock_server/lobby/logs/
-bedrock_server/lobby/worlds/*/db/
+bedrock_server/server_lobby/logs/
+bedrock_server/server_lobby/worlds/*/db/
+bedrock_server/_bds_1.21.120.4_extract/
 
 # Environment
 .env
@@ -18,26 +21,25 @@ build/
 
 # AL Projects
 ### AL ###
-#Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
+# Template for AL projects for Dynamics 365 Business Central
+# launch.json folder
 .vscode/
-#Cache folder
+# Cache folder
 .alcache/
-#Symbols folder
+# Symbols folder
 .alpackages/
-#Snapshots folder
+# Snapshots folder
 .snapshots/
-#Testing Output folder
+# Testing Output folder
 .output/
-#Extension App-file
+# Extension App-file
 *.app
-#Rapid Application Development File
+# Rapid Application Development File
 rad.json
-#Translation Base-file
+# Translation Base-file
 *.g.xlf
-#License-files
+# License-files
 *.bclicense
 *.flf
-#Test results file
+# Test results file
 TestResults.xml
->>>>>>> 6084c59e3e3e1e550de0cee585c761271acd7dc8

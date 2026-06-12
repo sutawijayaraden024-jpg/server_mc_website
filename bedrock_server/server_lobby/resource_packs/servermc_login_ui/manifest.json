@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Server_MC Login UI",
+    "description": "Client resource pack for Server_MC login and register UI branding.",
+    "uuid": "a3327528-2c8c-4d96-9ba3-24dd33f70ce5",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 120]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "0cd5868e-1a54-4a50-8f8f-f3cd6545952a",
+      "version": [1, 0, 0]
+    }
+  ]
+}

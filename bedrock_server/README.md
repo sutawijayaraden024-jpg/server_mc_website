@@ -6,7 +6,7 @@ Bedrock server untuk Minecraft Bedrock Edition.
 
 ```
 bedrock_server/
-├── lobby/                          # Main server directory
+├── server_lobby/                   # Main server directory (lobby)
 │   ├── start_server.bat           # Launch server script
 │   ├── bedrock_server.exe         # Server executable
 │   ├── server.properties          # Server configuration
@@ -22,9 +22,10 @@ bedrock_server/
 
 ## Quick Links
 
-- [Lobby Server README](lobby/README.md)
-- [Quick Start Guide](lobby/QUICK_START.md)
+- [Lobby Server README](server_lobby/README.md)
+- [Quick Start Guide](server_lobby/QUICK_START.md)
+- [Public Access Guide](server_lobby/PUBLIC_ACCESS.md)
 
 ## Main Server
 
-Located in `lobby/` directory with Maharlika City world.
+Located in `server_lobby/` directory with Maharlika City world.

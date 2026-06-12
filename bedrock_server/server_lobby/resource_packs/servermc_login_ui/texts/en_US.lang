@@ -1,0 +1,11 @@
+servermc.login.title=Server_MC
+servermc.login.body=Login or register your Server_MC account before playing in Maharlika City.
+servermc.login.button=Login
+servermc.register.button=Register
+servermc.guest.button=Continue as Guest
+servermc.login.email=Website account email
+servermc.login.password=Password
+servermc.register.username=Website username
+servermc.register.email=Email
+servermc.register.password=Password
+servermc.notice.guest=You are entering as guest. Login/register on the website for full access.

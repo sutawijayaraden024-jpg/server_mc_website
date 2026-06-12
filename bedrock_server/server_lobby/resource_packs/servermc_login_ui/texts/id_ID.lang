@@ -1,0 +1,11 @@
+servermc.login.title=Server_MC
+servermc.login.body=Login atau register akun Server_MC sebelum bermain penuh di Maharlika City.
+servermc.login.button=Login
+servermc.register.button=Register
+servermc.guest.button=Lanjut sebagai Guest
+servermc.login.email=Email akun website
+servermc.login.password=Password
+servermc.register.username=Username website
+servermc.register.email=Email
+servermc.register.password=Password
+servermc.notice.guest=Kamu masuk sebagai guest. Login/register di website untuk akses penuh.

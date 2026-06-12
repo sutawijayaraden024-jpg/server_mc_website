@@ -5,8 +5,17 @@ project_name = "server-mc-website"
 pages_build_output_dir = "./public"
 type = "javascript"
 
+[[kv_namespaces]]
+binding = "SERVER_MC_KV"
+id = "REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+
 [env.production]
 name = "server-mc-website"
+[[env.production.kv_namespaces]]
+binding = "SERVER_MC_KV"
+id = "REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
 
 [build]
 command = "echo 'Build complete'"
