@@ -1,23 +1,5 @@
 name = "server-mc-website"
-account_id = "0333957e835e4bf528fac6bd17d8e3a6"
-compatibility_date = "2026-06-06"
-project_name = "server-mc-website"
 pages_build_output_dir = "./public"
-type = "javascript"
 
-[[kv_namespaces]]
-binding = "SERVER_MC_KV"
-id = "REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID"
-preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
-
-[env.production]
-name = "server-mc-website"
-[[env.production.kv_namespaces]]
-binding = "SERVER_MC_KV"
-id = "REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID"
-preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
-
-[build]
-command = "echo 'Build complete'"
-cwd = "./"
-watch_paths = ["public/**/*.html", "public/**/*.css", "public/**/*.js"]
+[vars]
+WEBSITE_URL = "https://server-mc-website.pages.dev"
