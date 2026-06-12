@@ -99,7 +99,29 @@ export async function loadState(env) {
   const users = normalizeUserList(await readJsonStorage(env, 'users', memoryStore.users));
   const sessions = await readJsonStorage(env, 'sessions', memoryStore.sessions);
   const online = await readJsonStorage(env, 'online', memoryStore.online);
-  return { users, sessions, online };
+  const seededUsers = users.length ? users : normalizeUserList([
+    {
+      id: 1,
+      name: 'Ra172',
+      email: 'scarlettruiss@gmail.com',
+      role: 'admin',
+      xuid: '2535433223991124',
+      minecraft_name: 'ruiss971'
+    },
+    {
+      id: 2,
+      name: 'people1975',
+      email: 'khumairaputry3@gmail.com',
+      role: 'admin',
+      xuid: '',
+      minecraft_name: 'people1975'
+    }
+  ]);
+  if (!users.length && env?.SERVER_MC_KV) {
+    memoryStore.users = seededUsers;
+    await writeJsonStorage(env, 'users', seededUsers);
+  }
+  return { users: seededUsers, sessions, online };
 }
 
 export async function saveState(env, state) {

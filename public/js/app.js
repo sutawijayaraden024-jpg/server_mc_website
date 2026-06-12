@@ -37,9 +37,12 @@ let verificationCodes = loadVerificationCodes();
 
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
+  clearSensitiveFormState();
   loadFontSettings();
-  loadPosts();
-  renderPlayerDataSection();
+  syncBackendState().finally(() => {
+    loadPosts();
+    renderPlayerDataSection();
+  });
   toggleScrollButton();
   window.addEventListener('scroll', toggleScrollButton);
 
@@ -243,6 +246,25 @@ async function apiRequest(path, options = {}) {
   }
 
   return data;
+}
+
+async function syncBackendState() {
+  if (!hasApiBridge()) return null;
+  try {
+    const data = await apiRequest('/api/public/state', { method: 'GET' });
+    if (Array.isArray(data?.users)) {
+      registeredUsers = data.users.map(user => normalizeUser(user));
+      saveUsers();
+    }
+    if (Array.isArray(data?.online)) {
+      onlinePlayers = data.online.map(user => normalizeUser(user));
+      saveOnlinePlayers();
+    }
+    renderPlayerDataSection();
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 async function syncAuthRegister(user) {
@@ -521,6 +543,9 @@ function navigateTo(page) {
   document.getElementById(page)?.classList.add('active');
   currentPage = page;
   hideAuthOverlay();
+  if (page === 'login' || page === 'register') {
+    clearSensitiveFormState(page);
+  }
 
   if (page === 'komunitas') loadPosts();
   if (page === 'members') loadMembers();
@@ -542,6 +567,41 @@ function handleSendRegisterCode() {
   }
   const code = requestVerificationCode(email, 'register');
   showVerificationInfo('register-verification-info', 'Kode verifikasi: ' + code + ' (berlaku 5 menit).');
+}
+
+function clearSensitiveFormState(page = '') {
+  const fields = [
+    'login-email',
+    'login-password',
+    'login-code',
+    'register-name',
+    'register-email',
+    'register-password',
+    'register-code'
+  ];
+
+  for (const id of fields) {
+    const input = document.getElementById(id);
+    if (input) input.value = '';
+  }
+
+  clearVerificationInfo('login-verification-info');
+  clearVerificationInfo('register-verification-info');
+
+  const loginError = document.getElementById('login-error');
+  const registerError = document.getElementById('register-error');
+  loginError?.classList.add('hidden');
+  registerError?.classList.add('hidden');
+  if (loginError) loginError.textContent = '';
+  if (registerError) registerError.textContent = '';
+
+  if (page === 'login' || page === 'register') {
+    // Prevent browser autofill from keeping old credentials visible.
+    window.setTimeout(() => {
+      const focused = document.getElementById(page === 'login' ? 'login-email' : 'register-name');
+      focused?.focus?.();
+    }, 0);
+  }
 }
 
 function handleSendLoginCode() {
