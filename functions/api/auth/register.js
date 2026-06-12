@@ -1,4 +1,4 @@
-import { json, loadState, saveState, normalizeUser, createSession } from '../../_lib/store.js';
+import { json, loadState, saveState, normalizeUser, createSession, repairUserRole } from '../../_lib/store.js';
 
 export async function onRequestPost({ request, env }) {
   const body = await request.json().catch(() => ({}));
@@ -16,7 +16,27 @@ export async function onRequestPost({ request, env }) {
   const state = await loadState(env);
   const existing = state.users.find(user => user.email.toLowerCase() === email);
   if (existing) {
-    return json({ ok: false, message: 'account already exists' }, { status: 409 });
+    const repaired = repairUserRole({
+      ...existing,
+      name: username || existing.name,
+      password: password || existing.password,
+      xuid: xuid || existing.xuid,
+      minecraft_name: minecraftName || existing.minecraft_name,
+      role: role || existing.role
+    });
+    const updatedUsers = state.users.map(user => user.email.toLowerCase() === email ? repaired : user);
+    const session = createSession(repaired);
+    state.sessions = state.sessions.filter(item => item.email !== repaired.email);
+    state.sessions.unshift(session);
+    await saveState(env, { users: updatedUsers, sessions: state.sessions });
+    return json({
+      ok: true,
+      message: 'Account repaired and logged in',
+      role: repaired.role,
+      username: repaired.name,
+      xuid: repaired.xuid,
+      token: session.token
+    });
   }
 
   const user = normalizeUser({ email, name: username, password, role, xuid, minecraft_name: minecraftName });

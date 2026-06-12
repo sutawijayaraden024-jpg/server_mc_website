@@ -1,4 +1,4 @@
-import { json, loadState, saveState, normalizeUser, createSession } from '../../_lib/store.js';
+import { json, loadState, saveState, normalizeUser, createSession, repairUserRole } from '../../_lib/store.js';
 
 export async function onRequestPost({ request, env }) {
   const body = await request.json().catch(() => ({}));
@@ -15,15 +15,21 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, message: 'account not found' }, { status: 404 });
   }
 
-  if (user.password && user.password !== password) {
+  const repairedUser = repairUserRole(user);
+  const userChanged = JSON.stringify(repairedUser) !== JSON.stringify(user);
+  const users = userChanged
+    ? state.users.map(item => item.email.toLowerCase() === email ? repairedUser : item)
+    : state.users;
+
+  if (repairedUser.password && repairedUser.password !== password) {
     return json({ ok: false, message: 'invalid password' }, { status: 401 });
   }
 
-  const normalized = normalizeUser(user);
+  const normalized = normalizeUser(repairedUser);
   const session = createSession(normalized);
   state.sessions = state.sessions.filter(item => item.email !== normalized.email);
   state.sessions.unshift(session);
-  await saveState(env, { sessions: state.sessions });
+  await saveState(env, { users, sessions: state.sessions });
 
   return json({
     ok: true,

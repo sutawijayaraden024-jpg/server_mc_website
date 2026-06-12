@@ -26,6 +26,11 @@ export const KNOWN_XUIDS = [
   }
 ];
 
+export const ADMIN_EMAILS = [
+  'scarlettruiss@gmail.com',
+  'khumairaputry3@gmail.com'
+];
+
 async function readJsonStorage(env, key, fallback) {
   if (env?.SERVER_MC_KV) {
     const value = await env.SERVER_MC_KV.get(key, { type: 'json' });
@@ -56,10 +61,11 @@ export function json(data, init = {}) {
 export function normalizeUser(input = {}) {
   const email = String(input.email || '').toLowerCase();
   const name = input.name || input.username || email.split('@')[0] || 'Player';
-  const role = input.role === 'admin' || input.role === 'operator' ? 'admin' : 'member';
   const known = KNOWN_XUIDS.find(item => item.email === email || item.xuid === String(input.xuid || ''));
   const xuid = String(input.xuid || known?.xuid || '').trim();
   const minecraftName = input.minecraft_name || input.minecraftName || known?.minecraft_name || '';
+  const isKnownAdmin = ADMIN_EMAILS.includes(email) || known?.role === 'admin';
+  const role = isKnownAdmin || input.role === 'admin' || input.role === 'operator' ? 'admin' : 'member';
   return {
     id: input.id || Date.now(),
     name,
@@ -73,8 +79,24 @@ export function normalizeUser(input = {}) {
   };
 }
 
+export function normalizeUserList(users = []) {
+  return users.map(user => normalizeUser(user));
+}
+
+export function isKnownAdminEmail(email) {
+  return ADMIN_EMAILS.includes(String(email || '').toLowerCase());
+}
+
+export function repairUserRole(user = {}) {
+  const normalized = normalizeUser(user);
+  if (isKnownAdminEmail(normalized.email)) {
+    return { ...normalized, role: 'admin' };
+  }
+  return normalized;
+}
+
 export async function loadState(env) {
-  const users = await readJsonStorage(env, 'users', memoryStore.users);
+  const users = normalizeUserList(await readJsonStorage(env, 'users', memoryStore.users));
   const sessions = await readJsonStorage(env, 'sessions', memoryStore.sessions);
   const online = await readJsonStorage(env, 'online', memoryStore.online);
   return { users, sessions, online };
