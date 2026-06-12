@@ -1,5 +1,10 @@
 name = "server-mc-website"
 pages_build_output_dir = "./public"
 
+[[kv_namespaces]]
+binding = "SERVER_MC_KV"
+id = "90ca423dc0f34c4b8a633e287795c5a3"
+preview_id = "90ca423dc0f34c4b8a633e287795c5a3"
+
 [vars]
 WEBSITE_URL = "https://server-mc-website.pages.dev"
