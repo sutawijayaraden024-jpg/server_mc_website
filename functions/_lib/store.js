@@ -64,8 +64,11 @@ export function normalizeUser(input = {}) {
   const known = KNOWN_XUIDS.find(item => item.email === email || item.xuid === String(input.xuid || ''));
   const xuid = String(input.xuid || known?.xuid || '').trim();
   const minecraftName = input.minecraft_name || input.minecraftName || known?.minecraft_name || '';
+  // Admin role must be derived ONLY from trusted allowlist.
+  // Prevent clients from granting themselves admin by sending role=admin.
   const isKnownAdmin = ADMIN_EMAILS.includes(email) || known?.role === 'admin';
-  const role = isKnownAdmin || input.role === 'admin' || input.role === 'operator' ? 'admin' : 'member';
+  const role = isKnownAdmin ? 'admin' : 'member';
+
   return {
     id: input.id || Date.now(),
     name,
