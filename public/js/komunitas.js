@@ -94,29 +94,33 @@ function saveCommunityMessages() {
 
 // Update community UI
 function updateCommunityUI() {
-  // Update user info in sidebar
-  const sidebarAvatar = document.getElementById('sidebar-user-avatar');
-  const sidebarName = document.getElementById('sidebar-user-name');
-  const sidebarStatus = document.getElementById('sidebar-user-status');
-  const currentUserDisplay = document.getElementById('current-user-name');
+  // Update user info in Discord-style sidebar
+  const discordUserAvatar = document.getElementById('discord-user-avatar');
+  const discordUserName = document.getElementById('discord-user-name');
+  const discordUserStatus = document.getElementById('discord-user-status');
+  const discordUserAvatarLarge = document.getElementById('discord-user-avatar-large');
+  const discordUserNamePanel = document.getElementById('discord-user-name-panel');
+  const discordUserId = document.getElementById('discord-user-id');
   
   if (communityUser) {
-    if (sidebarAvatar) sidebarAvatar.textContent = '👤';
-    if (sidebarName) sidebarName.textContent = communityUser.name;
-    if (sidebarStatus) {
+    if (discordUserAvatar) discordUserAvatar.textContent = '👤';
+    if (discordUserName) discordUserName.textContent = communityUser.name;
+    if (discordUserStatus) {
       const isOnline = isUserOnline(communityUser.email);
-      sidebarStatus.textContent = isOnline ? 'Online' : 'Offline';
-      sidebarStatus.style.color = isOnline ? '#22c55e' : 'var(--gray-muted)';
+      discordUserStatus.textContent = isOnline ? '🟢' : '⚫';
     }
-    if (currentUserDisplay) currentUserDisplay.textContent = communityUser.name;
+    if (discordUserAvatarLarge) discordUserAvatarLarge.textContent = '👤';
+    if (discordUserNamePanel) discordUserNamePanel.textContent = communityUser.name;
+    if (discordUserId) discordUserId.textContent = '#' + communityUser.email.substring(0, 4);
   } else {
-    if (sidebarName) sidebarName.textContent = 'Guest';
-    if (sidebarStatus) sidebarStatus.textContent = 'Offline';
-    if (currentUserDisplay) currentUserDisplay.textContent = 'Guest';
+    if (discordUserName) discordUserName.textContent = 'Guest';
+    if (discordUserStatus) discordUserStatus.textContent = '⚫';
+    if (discordUserNamePanel) discordUserNamePanel.textContent = 'Guest';
+    if (discordUserId) discordUserId.textContent = '#0000';
   }
   
-  // Update stats
-  updateCommunityStats();
+  // Update member list
+  loadDiscordMemberList();
 }
 
 // Update community statistics
@@ -128,6 +132,75 @@ function updateCommunityStats() {
   if (totalMembers) totalMembers.textContent = registeredUsers.length;
   if (totalActive) totalActive.textContent = onlinePlayers.length;
   if (totalChats) totalChats.textContent = communityChats.length;
+}
+
+// Load Discord member list
+function loadDiscordMemberList() {
+  const memberList = document.getElementById('discord-member-list');
+  const memberCount = document.getElementById('discord-member-count');
+  
+  if (!memberList) return;
+  
+  memberList.innerHTML = '';
+  
+  if (memberCount) {
+    memberCount.textContent = `Member — ${registeredUsers.length}`;
+  }
+  
+  registeredUsers.forEach(user => {
+    const isOnline = isUserOnline(user.email);
+    
+    const item = document.createElement('div');
+    item.className = 'discord-member-item';
+    item.innerHTML = `
+      <div class="discord-member-avatar ${isOnline ? 'online' : ''}">👤</div>
+      <span class="discord-member-name">${user.name}</span>
+      <span class="discord-member-status">${isOnline ? '🟢' : '⚫'}</span>
+    `;
+    item.onclick = () => startDmChat(user);
+    memberList.appendChild(item);
+  });
+}
+
+// Load Discord text channels
+function loadDiscordTextChannels() {
+  const textChannels = document.getElementById('discord-text-channels');
+  
+  if (!textChannels) return;
+  
+  textChannels.innerHTML = '';
+  
+  communityChats.forEach(chat => {
+    const channel = document.createElement('div');
+    channel.className = 'discord-text-channel';
+    channel.innerHTML = `
+      <span>#</span>
+      <span>${chat.name}</span>
+    `;
+    channel.onclick = () => selectDiscordChannel(chat.id, chat.type);
+    textChannels.appendChild(channel);
+  });
+}
+
+// Select Discord channel
+function selectDiscordChannel(chatId, chatType) {
+  activeChatId = chatId;
+  activeChatType = chatType;
+  
+  // Update active state
+  document.querySelectorAll('.discord-text-channel').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  // Update chat name
+  const chatName = document.getElementById('discord-chat-name');
+  const chat = communityChats.find(c => c.id === chatId);
+  if (chat && chatName) {
+    chatName.textContent = chat.name;
+  }
+  
+  // Load messages
+  loadDiscordMessages(chatId);
 }
 
 // Load community chat list
@@ -852,3 +925,764 @@ function showToast(message) {
     toast.classList.add('hidden');
   }, 3000);
 }
+
+// Profile Tab Switching
+function switchProfileTab(tabName) {
+  // Remove active class from all tabs
+  document.querySelectorAll('.profile-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Hide all tab panes
+  document.querySelectorAll('.profile-tab-pane').forEach(pane => {
+    pane.classList.remove('active');
+  });
+  
+  // Activate selected tab and pane
+  document.querySelector(`.profile-tab[data-tab="${tabName}"]`).classList.add('active');
+  document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+// Settings Modal Functions
+function showSettingsModal() {
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function hideSettingsModal() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+function switchSettingsCategory(category) {
+  // Remove active class from all categories
+  document.querySelectorAll('.settings-category').forEach(cat => {
+    cat.classList.remove('active');
+  });
+  
+  // Hide all settings panes
+  document.querySelectorAll('.settings-pane').forEach(pane => {
+    pane.classList.remove('active');
+  });
+  
+  // Activate selected category and pane
+  document.querySelector(`.settings-category[data-category="${category}"]`).classList.add('active');
+  document.getElementById(`settings-${category}`).classList.add('active');
+}
+
+// Channel Selection
+function selectChannel(channelId) {
+  // Update active state
+  document.querySelectorAll('.discord-text-channel').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  // Find and activate the selected channel
+  const channels = document.querySelectorAll('.discord-text-channel');
+  channels.forEach(channel => {
+    if (channel.textContent.includes(channelId)) {
+      channel.classList.add('active');
+    }
+  });
+  
+  // Update chat name
+  const chatName = document.getElementById('discord-chat-name');
+  if (chatName) {
+    chatName.textContent = channelId;
+  }
+  
+  // Update placeholder
+  const messageInput = document.getElementById('discord-message-input');
+  if (messageInput) {
+    messageInput.placeholder = `Kirim pesan ke #${channelId}`;
+  }
+  
+  showToast(`Masuk ke #${channelId}`);
+}
+
+// Music Player Functions
+let isPlaying = false;
+let isMuted = false;
+let currentVolume = 70;
+
+function musicPlayPause() {
+  isPlaying = !isPlaying;
+  const btn = document.querySelector('.music-play-btn');
+  if (btn) {
+    btn.textContent = isPlaying ? '⏸️' : '▶️';
+  }
+  showToast(isPlaying ? 'Memutar musik' : 'Musik dijeda');
+}
+
+function musicNext() {
+  showToast('Lagu berikutnya');
+}
+
+function musicPrevious() {
+  showToast('Lagu sebelumnya');
+}
+
+function musicShuffle() {
+  showToast('Shuffle diaktifkan');
+}
+
+function musicRepeat() {
+  showToast('Repeat diaktifkan');
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  const volumeBtn = document.querySelector('.music-volume-btn');
+  if (volumeBtn) {
+    volumeBtn.textContent = isMuted ? '🔇' : '🔊';
+  }
+  showToast(isMuted ? 'Volume dimatikan' : 'Volume diaktifkan');
+}
+
+function setVolume(value) {
+  currentVolume = value;
+  if (value == 0) {
+    isMuted = true;
+    document.querySelector('.music-volume-btn').textContent = '🔇';
+  } else {
+    isMuted = false;
+    document.querySelector('.music-volume-btn').textContent = '🔊';
+  }
+}
+
+// Navigation Functions
+function showMessagesPanel() {
+  showToast('Panel Pesan');
+}
+
+function showMusicPlaylist() {
+  showToast('Playlist Musik');
+}
+
+function showNotifications() {
+  showToast('Notifikasi');
+}
+
+function showFriends() {
+  showToast('Daftar Teman');
+}
+
+function showBookmarks() {
+  showToast('Bookmark');
+}
+
+function togglePin() {
+  showToast('Channel dipin');
+}
+
+function inviteMember() {
+  showNewDmModal();
+}
+
+function toggleMemberList() {
+  const memberSidebar = document.querySelector('.discord-member-sidebar');
+  if (memberSidebar) {
+    memberSidebar.classList.toggle('hidden');
+  }
+}
+
+function joinMusicRoom() {
+  showToast('Bergabung ke Music Room');
+}
+
+function showMusicRoomSettings() {
+  showToast('Pengaturan Music Room');
+}
+
+// Update Member List with Role Categories
+function loadDiscordMemberList() {
+  const memberOwner = document.getElementById('member-owner');
+  const memberAdmin = document.getElementById('member-admin');
+  const memberModerator = document.getElementById('member-moderator');
+  const memberOnline = document.getElementById('member-online');
+  const memberOffline = document.getElementById('member-offline');
+  
+  if (!memberOwner || !memberAdmin || !memberModerator || !memberOnline || !memberOffline) return;
+  
+  // Clear existing members
+  memberOwner.innerHTML = '';
+  memberAdmin.innerHTML = '';
+  memberModerator.innerHTML = '';
+  memberOnline.innerHTML = '';
+  memberOffline.innerHTML = '';
+  
+  registeredUsers.forEach(user => {
+    const isOnline = isUserOnline(user.email);
+    const role = user.role || 'member';
+    
+    const item = document.createElement('div');
+    item.className = 'discord-member-item';
+    item.innerHTML = `
+      <div class="discord-member-avatar ${isOnline ? 'online' : ''}">👤</div>
+      <span class="discord-member-name">${user.name}</span>
+      <span class="discord-member-status">${isOnline ? '🟢' : '⚫'}</span>
+    `;
+    item.onclick = () => startDmChat(user);
+    
+    // Categorize by role
+    if (role === 'owner') {
+      memberOwner.appendChild(item);
+    } else if (role === 'admin') {
+      memberAdmin.appendChild(item);
+    } else if (role === 'moderator') {
+      memberModerator.appendChild(item);
+    } else if (isOnline) {
+      memberOnline.appendChild(item);
+    } else {
+      memberOffline.appendChild(item);
+    }
+  });
+  
+  // Update member count
+  const memberCount = document.getElementById('discord-member-count');
+  if (memberCount) {
+    memberCount.textContent = `Member — ${registeredUsers.length}`;
+  }
+  
+  // Update chat header member count
+  const chatMembers = document.getElementById('discord-chat-members');
+  if (chatMembers) {
+    const onlineCount = registeredUsers.filter(u => isUserOnline(u.email)).length;
+    chatMembers.textContent = `${onlineCount}/${registeredUsers.length} Online`;
+  }
+}
+
+// Override openCommunitySettings to use new settings modal
+const originalOpenCommunitySettings = openCommunitySettings;
+openCommunitySettings = function() {
+  if (!communityUser) {
+    showCommunityLoginOverlay();
+    return;
+  }
+  showSettingsModal();
+};
+
+// ============================================
+// NEW BACKEND API INTEGRATION
+// ============================================
+
+// API Configuration
+const API_BASE_URL = '/api/community';
+const WS_URL = '/api/community/websocket';
+
+// WebSocket Connection
+let ws = null;
+let wsReconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 5000;
+
+// Current user session
+let currentUser = null;
+let currentSession = null;
+
+// Initialize WebSocket connection
+function initWebSocket() {
+  if (ws) {
+    ws.close();
+  }
+  
+  const userId = currentUser?.id;
+  const sessionId = currentSession?.id;
+  
+  if (!userId || !sessionId) {
+    console.log('Cannot connect to WebSocket: missing user or session');
+    return;
+  }
+  
+  try {
+    ws = new WebSocket(`${WS_URL}?user_id=${userId}&session_id=${sessionId}`);
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      wsReconnectAttempts = 0;
+      
+      // Send heartbeat every 30 seconds
+      setInterval(sendHeartbeat, 30000);
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      handleWebSocketMessage(data);
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      if (wsReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        wsReconnectAttempts++;
+        setTimeout(initWebSocket, RECONNECT_DELAY);
+      }
+    };
+  } catch (error) {
+    console.error('Failed to connect to WebSocket:', error);
+  }
+}
+
+function sendHeartbeat() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'heartbeat' }));
+  }
+  
+  // Also send heartbeat via API
+  fetch(`${API_BASE_URL}/status`, {
+    method: 'PUT',
+    credentials: 'include'
+  }).catch(console.error);
+}
+
+function handleWebSocketMessage(data) {
+  switch (data.type) {
+    case 'connected':
+      console.log('WebSocket connection confirmed');
+      break;
+      
+    case 'new_message':
+      handleNewMessage(data.message);
+      break;
+      
+    case 'typing':
+      handleTypingIndicator(data.userId, data.channelId);
+      break;
+      
+    case 'status_update':
+      handleStatusUpdate(data);
+      break;
+      
+    case 'user_joined':
+      handleUserJoined(data.userId, data.channelId);
+      break;
+      
+    case 'user_left':
+      handleUserLeft(data.userId, data.channelId);
+      break;
+      
+    case 'music_control':
+      handleMusicControl(data);
+      break;
+      
+    case 'notification':
+      handleNotification(data.notification);
+      break;
+      
+    default:
+      console.log('Unknown WebSocket message type:', data.type);
+  }
+}
+
+function handleNewMessage(message) {
+  // Add message to chat
+  const messagesContainer = document.getElementById('discord-messages');
+  if (!messagesContainer) return;
+  
+  const messageElement = createMessageElement(message);
+  messagesContainer.appendChild(messageElement);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function handleTypingIndicator(userId, channelId) {
+  // Show typing indicator
+  console.log(`User ${userId} is typing in channel ${channelId}`);
+}
+
+function handleStatusUpdate(data) {
+  // Update user status in member list
+  console.log('User status update:', data);
+  loadDiscordMemberList();
+}
+
+function handleUserJoined(userId, channelId) {
+  console.log(`User ${userId} joined channel ${channelId}`);
+}
+
+function handleUserLeft(userId, channelId) {
+  console.log(`User ${userId} left channel ${channelId}`);
+}
+
+function handleMusicControl(data) {
+  console.log('Music control:', data);
+  // Update music player state
+}
+
+function handleNotification(notification) {
+  showToast(notification.title);
+  // Update notification count
+}
+
+// API Functions
+async function fetchCurrentUser() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      currentUser = data.user;
+      currentSession = { id: data.sessionId };
+      
+      // Update UI with user data
+      updateUserDisplay(data.user, data.profile);
+      
+      // Initialize WebSocket
+      initWebSocket();
+      
+      return data;
+    } else {
+      console.error('Failed to fetch user');
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return null;
+  }
+}
+
+function updateUserDisplay(user, profile) {
+  // Update avatar
+  const avatarElements = document.querySelectorAll('#discord-user-avatar, #discord-user-avatar-large');
+  avatarElements.forEach(el => {
+    if (user.avatar) {
+      el.style.backgroundImage = `url(${user.avatar})`;
+      el.textContent = '';
+    }
+  });
+  
+  // Update username
+  const nameElements = document.querySelectorAll('#discord-user-name, #discord-user-name-panel');
+  nameElements.forEach(el => {
+    el.textContent = user.displayName || user.username;
+  });
+  
+  // Update status
+  const statusElement = document.getElementById('discord-user-status');
+  if (statusElement && profile) {
+    const statusColors = {
+      'online': '🟢',
+      'idle': '🌙',
+      'do_not_disturb': '🔴',
+      'offline': '⚫'
+    };
+    statusElement.textContent = statusColors[profile.status] || '⚫';
+  }
+}
+
+async function fetchCommunities() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/communities`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.communities;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching communities:', error);
+    return [];
+  }
+}
+
+async function fetchChannels(communityId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/channels?community_id=${communityId}`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.channels;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching channels:', error);
+    return [];
+  }
+}
+
+async function fetchMessages(channelId, limit = 50) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/messages?channel_id=${channelId}&limit=${limit}`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.messages;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    return [];
+  }
+}
+
+async function sendMessage(channelId, content, attachments = []) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/messages`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channelId,
+        content,
+        attachments
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.message;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    return null;
+  }
+}
+
+async function uploadFile(file, messageId, fileType) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('message_id', messageId);
+    formData.append('file_type', fileType);
+    
+    const response = await fetch(`${API_BASE_URL}/files`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.attachment;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    return null;
+  }
+}
+
+async function fetchFriends(status = 'all') {
+  try {
+    const response = await fetch(`${API_BASE_URL}/friends?status=${status}`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.friends;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching friends:', error);
+    return [];
+  }
+}
+
+async function fetchNotifications(unreadOnly = false) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/notifications?unread=${unreadOnly}`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data;
+    }
+    return { notifications: [], unreadCount: 0 };
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return { notifications: [], unreadCount: 0 };
+  }
+}
+
+async function search(query, type = 'all', communityId = null) {
+  try {
+    let url = `${API_BASE_URL}/search?q=${encodeURIComponent(query)}&type=${type}`;
+    if (communityId) {
+      url += `&community_id=${communityId}`;
+    }
+    
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.results;
+    }
+    return {};
+  } catch (error) {
+    console.error('Error searching:', error);
+    return {};
+  }
+}
+
+async function fetchPlaylists(playlistId = null, channelId = null) {
+  try {
+    let url = `${API_BASE_URL}/music`;
+    if (playlistId) {
+      url += `?playlist_id=${playlistId}`;
+    } else if (channelId) {
+      url += `?channel_id=${channelId}`;
+    }
+    
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (playlistId) {
+        return { playlist: data.playlist, tracks: data.tracks };
+      }
+      return data.playlists;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching playlists:', error);
+    return [];
+  }
+}
+
+async function createPlaylist(name, description, channelId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/music`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'create_playlist',
+        channelId,
+        name,
+        description
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.playlist;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error creating playlist:', error);
+    return null;
+  }
+}
+
+async function addTrackToPlaylist(playlistId, trackUrl, trackName, artist, album) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/music`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'add_track',
+        playlistId,
+        trackUrl,
+        trackName,
+        artist,
+        album
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.track;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error adding track to playlist:', error);
+    return null;
+  }
+}
+
+async function fetchLinkPreview(url) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/link-preview?url=${encodeURIComponent(url)}`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching link preview:', error);
+    return null;
+  }
+}
+
+async function fetchEmojis(communityId = null) {
+  try {
+    let url = `${API_BASE_URL}/emojis`;
+    if (communityId) {
+      url += `?community_id=${communityId}`;
+    }
+    
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.emojis;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching emojis:', error);
+    return [];
+  }
+}
+
+async function fetchStickers(favorites = false) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/stickers?favorites=${favorites}`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.stickers;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching stickers:', error);
+    return [];
+  }
+}
+
+// Initialize new backend integration on page load
+document.addEventListener('DOMContentLoaded', async () => {
+  // Try to fetch current user from new backend
+  const userData = await fetchCurrentUser();
+  if (userData) {
+    console.log('Connected to new backend API');
+    
+    // Load communities from new backend
+    const communities = await fetchCommunities();
+    console.log('Communities from backend:', communities);
+    
+    // Load notifications
+    const notifications = await fetchNotifications();
+    console.log('Notifications:', notifications);
+  } else {
+    console.log('Using legacy localStorage-based system');
+  }
+});
