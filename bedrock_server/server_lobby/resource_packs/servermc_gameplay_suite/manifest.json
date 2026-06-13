@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Server_MC Gameplay Suite RP",
+    "description": "Resource pack placeholder for gameplay suite UI and future icons.",
+    "uuid": "2d0d0f36-86f5-4f8a-b0ad-3c2e95e1b6fb",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 120]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "f8aa27d2-f8b7-460d-b0d5-2ed6d6b9cc41",
+      "version": [1, 0, 0]
+    }
+  ]
+}

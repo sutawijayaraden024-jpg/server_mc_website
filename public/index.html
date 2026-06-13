@@ -366,19 +366,19 @@
             <p class="auth-subtitle">Masuk dengan akun server yang sudah terdaftar. Admin tetap pakai akun yang sama, hanya role-nya yang berbeda.</p>
             <div id="login-error" class="error-message hidden"></div>
           <div class="auth-status-badge" id="auth-bridge-status">Mengecek backend publik...</div>
-          <form onsubmit="handleLogin(event)">
+          <form onsubmit="handleLogin(event)" autocomplete="off">
             <div class="form-group">
               <label for="login-email">Email</label>
-              <input type="email" id="login-email" required>
+              <input type="email" id="login-email" autocomplete="off" required>
             </div>
             <div class="form-group">
               <label for="login-password">Password</label>
-              <input type="password" id="login-password" required>
+              <input type="password" id="login-password" autocomplete="new-password" required>
             </div>
             <div class="form-group code-group" id="login-code-group">
               <label for="login-code">Kode Verifikasi</label>
               <div class="code-send-row">
-                <input type="text" id="login-code" maxlength="6" placeholder="Masukkan kode">
+                <input type="text" id="login-code" maxlength="6" placeholder="Masukkan kode" autocomplete="off">
                 <button type="button" class="btn btn-secondary" onclick="handleSendLoginCode();">Kirim Kode</button>
               </div>
             </div>
@@ -401,23 +401,23 @@
             <p class="auth-subtitle">Buat akun member. Admin tetap dipisahkan lewat role dan akun utama yang sudah ada.</p>
             <div id="register-error" class="error-message hidden"></div>
           <div class="auth-status-badge" id="register-bridge-status">Mengecek backend publik...</div>
-          <form onsubmit="handleRegister(event)">
+          <form onsubmit="handleRegister(event)" autocomplete="off">
             <div class="form-group">
               <label for="register-name">Nama</label>
-              <input type="text" id="register-name" required>
+              <input type="text" id="register-name" autocomplete="off" required>
             </div>
             <div class="form-group">
               <label for="register-email">Email</label>
-              <input type="email" id="register-email" required>
+              <input type="email" id="register-email" autocomplete="off" required>
             </div>
             <div class="form-group">
               <label for="register-password">Password</label>
-              <input type="password" id="register-password" required>
+              <input type="password" id="register-password" autocomplete="new-password" required>
             </div>
             <div class="form-group code-group" id="register-code-group">
               <label for="register-code">Kode Verifikasi</label>
               <div class="code-send-row">
-                <input type="text" id="register-code" maxlength="6" placeholder="Masukkan kode">
+                <input type="text" id="register-code" maxlength="6" placeholder="Masukkan kode" autocomplete="off">
                 <button type="button" class="btn btn-secondary" onclick="handleSendRegisterCode();">Kirim Kode</button>
               </div>
             </div>

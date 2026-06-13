@@ -327,7 +327,7 @@ async function syncServerLeave(user) {
 }
 
 function normalizeUser(user) {
-  const email = user.email || '';
+  const email = (user.email || '').toLowerCase();
   const name = user.name || user.username || email.split('@')[0] || 'Player';
   const role = user.role === 'admin' || user.role === 'operator' ? 'admin' : 'member';
   const adminAccount = getAdminAccount(email);
@@ -349,8 +349,8 @@ function isRemoteAuthAvailable() {
 }
 
 function getAdminAccount(email) {
-  if (isRemoteAuthAvailable()) return null;
-  return ADMIN_ACCOUNTS.find(account => account.email === String(email || '').toLowerCase()) || null;
+  const normalized = String(email || '').toLowerCase();
+  return ADMIN_ACCOUNTS.find(account => String(account.email || '').toLowerCase() === normalized) || null;
 }
 
 function persistCurrentUser(user, token = null) {
@@ -814,6 +814,37 @@ function deleteAccount() {
     return;
   }
   if (!confirm('Hapus akun ini?')) return;
+  const email = currentUser.email;
+  // Prevent deleting allowlist admins locally
+  const adminAccount = getAdminAccount(email);
+  if (adminAccount) {
+    showToast('Akun admin tidak dapat dihapus.');
+    return;
+  }
+
+  if (isRemoteAuthAvailable()) {
+    // Call backend to delete account from KV
+    apiRequest('/api/auth/delete', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    }).then(result => {
+      if (result?.ok) {
+        registeredUsers = registeredUsers.filter(u => u.email !== email);
+        saveUsers();
+        markOffline(email);
+        logout();
+        renderPlayerDataSection();
+        showToast('Akun berhasil dihapus.');
+      } else {
+        showToast(result?.message || 'Gagal menghapus akun.');
+      }
+    }).catch(() => {
+      showToast('Gagal menghapus akun (server error).');
+    });
+    return;
+  }
+
+  // Local-only site: remove from localStorage
   registeredUsers = registeredUsers.filter(u => u.email !== currentUser.email);
   saveUsers();
   markOffline(currentUser.email);

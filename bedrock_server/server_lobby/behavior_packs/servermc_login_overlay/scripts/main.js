@@ -3,6 +3,9 @@ import { ModalFormData } from '@minecraft/server-ui';
 
 const WEBSITE_URL = 'https://server-mc-website.pages.dev';
 const WEBSITE_AUTH_API = `${WEBSITE_URL}/api/auth/login`;
+const WEBSITE_SESSION_API = `${WEBSITE_URL}/api/auth/session`;
+const WEBSITE_SERVER_JOIN_API = `${WEBSITE_URL}/api/server/join`;
+const WEBSITE_SERVER_RESOLVE_API = `${WEBSITE_URL}/api/server/resolve`;
 const LOGIN_SPAWN = { x: 951, y: 48, z: -574 };
 const ADMIN_SPAWN = { x: 1600, y: 31, z: -241 };
 const MEMBER_SPAWN = { x: -2068, y: 33, z: -2043 };
@@ -65,7 +68,8 @@ async function showLoginForm(player) {
     }
 
     const role = loginResult.role === 'admin' ? 'admin' : 'member';
-    const spawn = role === 'admin' ? ADMIN_SPAWN : MEMBER_SPAWN;
+    const joinResult = await syncPlayerJoin(player, loginResult);
+    const spawn = joinResult?.spawn || (role === 'admin' ? ADMIN_SPAWN : MEMBER_SPAWN);
 
     player.sendMessage(`Server_MC: login diterima sebagai ${role}. Kamu akan dipindahkan ke spawn ${role}.`);
     completeLogin(player);
@@ -132,11 +136,58 @@ async function authenticateWithWebsite(email, password) {
       message: data?.message || 'Login berhasil',
       role: data?.role || 'member',
       username: data?.username || '',
-      token: data?.token || ''
+      token: data?.token || '',
+      xuid: data?.xuid || ''
     };
   } catch {
     return { ok: false, message: 'Gagal terhubung ke website authentication' };
   }
+}
+
+async function syncPlayerJoin(player, loginResult) {
+  if (typeof fetch !== 'function') return null;
+
+  try {
+    const resolveResponse = await fetch(WEBSITE_SERVER_RESOLVE_API, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        xuid: loginResult.xuid || '',
+        username: player.name
+      })
+    });
+
+    const resolveData = await resolveResponse.json().catch(() => null);
+    if (resolveResponse.ok && resolveData?.ok) {
+      return resolveData;
+    }
+
+    const joinResponse = await fetch(WEBSITE_SERVER_JOIN_API, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: loginResult.username || player.name,
+        email: '',
+        role: loginResult.role,
+        xuid: loginResult.xuid || '',
+        minecraft_name: player.name,
+        server: 'server_lobby'
+      })
+    });
+
+    const joinData = await joinResponse.json().catch(() => null);
+    if (joinResponse.ok && joinData?.ok) {
+      return joinData;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function showTitleFallback(player) {
