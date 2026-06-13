@@ -1,46 +1,51 @@
-# Cloudflare Deployment Setup
+# Cloudflare Pages Setup - Cara Perbaiki Build Error
 
-## Perintah Setup Git untuk Cloudflare
+## Masalah
+Error: `npx wrangler deploy` — ini command untuk Worker, bukan Pages.
 
-Langkah-langkah yang sudah dilakukan:
-1. ✅ Update `.gitignore` - mengecualikan file besar (.mcworld, db, logs)
-2. ✅ Update `wrangler.toml` - konfigurasi Cloudflare Pages
-3. ✅ Buat GitHub Actions workflow - otomatis deploy saat push
+## Solusi
 
-## Langkah Selanjutnya
+### 1. Buka Cloudflare Dashboard
+https://dash.cloudflare.com → **Workers & Pages** → `server-mc-website`
 
-### 1. Push ke GitHub (Jika belum ada remote)
-```powershell
-git remote add origin https://github.com/YOUR_USERNAME/server_mc_website.git
-git branch -M main
-git push -u origin main
+### 2. Klik "Settings" → "Build settings"
+
+### 3. Ubah Build Configuration menjadi:
+
+| Setting | Value |
+|---------|-------|
+| **Build command** | **(kosongkan)** |
+| **Build output directory** | `./public` |
+| **Root directory** | (kosongkan) |
+
+> **JANGAN** isi build command dengan `npx wrangler deploy` atau apapun. **Kosongkan saja.**
+
+### 4. Framework preset: **None**
+
+### 5. Environment Variables (Advanced):
+| Variable | Value |
+|----------|-------|
+| `NODE_VERSION` | `22` |
+
+### 6. Simpan → Trigger redeploy
+
+---
+
+## Kenapa Ini Terjadi?
+
+Cloudflare Pages membaca `wrangler.toml` dan otomatis mengubah build command menjadi `npx wrangler deploy`. Ini salah karena:
+- `wrangler.toml` hanya untuk **binding definitions** (KV, D1)
+- Pages Functions di-deploy **otomatis** dari folder `functions/`
+- Tidak perlu build command untuk static HTML/CSS/JS
+
+## Yang Benar Terjadi Saat Build:
+
+```
+1. Clone repository
+2. npm install (optional, untuk dependencies)
+3. Copy folder public/ → output
+4. Deploy functions/ sebagai Pages Functions
+5. Selesai ✅
 ```
 
-### 2. Setup GitHub Secrets untuk Auto-Deploy
-Di GitHub repository, go to **Settings → Secrets and variables → Actions**, tambahkan:
-- `CLOUDFLARE_API_TOKEN` - dari Cloudflare API tokens
-- `CLOUDFLARE_ACCOUNT_ID` - `0333957e835e4bf528fac6bd17d8e3a6`
-
-### 3. Setup Cloudflare Pages
-1. Login ke [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Go to **Pages** → **Create a project** → **Connect to Git**
-3. Authorize GitHub dan select repository `server_mc_website`
-4. Build settings:
-   - **Framework preset**: None
-   - **Build command**: `echo 'Build complete'`
-   - **Build output directory**: `public`
-5. Deploy!
-
-## Struktur Deployment
-
-```
-GitHub (main branch)
-    ↓
-GitHub Actions (deploy.yml)
-    ↓
-Cloudflare Pages
-    ↓
-https://server-mc-website.pages.dev
-```
-
-Setiap kali push ke `main` branch, otomatis deploy ke Cloudflare Pages!
+Tidak perlu `wrangler deploy`.
