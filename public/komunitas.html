@@ -3,654 +3,412 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Komunitas Server_MC - Chat dengan sesama member">
-  <title>Komunitas - Server_MC</title>
+  <meta name="description" content="Server_MC Chat - Komunitas premium untuk para pemain Minecraft">
+  <title>Server_MC Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/komunitas.css">
 </head>
 <body>
   <div id="toast-message" class="toast hidden"></div>
-  
-  <!-- Community Login Overlay -->
-  <div id="community-login-overlay" class="community-login-overlay hidden">
-    <div class="community-login-card">
-      <h2>Login Komunitas</h2>
-      <p class="login-subtitle">Masuk ke komunitas dengan akun yang sudah terdaftar di website.</p>
+
+  <!-- Login Overlay -->
+  <div id="community-login-overlay" class="login-overlay hidden">
+    <div class="login-card">
+      <div class="login-logo">S</div>
+      <h2>Server_MC Chat</h2>
+      <p class="login-subtitle">Masuk ke komunitas premium</p>
       <div id="community-login-error" class="error-message hidden"></div>
       <form onsubmit="handleCommunityLogin(event)" autocomplete="off">
-        <div class="form-group">
-          <label for="community-login-email">Email</label>
-          <input type="email" id="community-login-email" autocomplete="off" required>
+        <div class="login-field">
+          <input type="email" id="community-login-email" placeholder="Email" autocomplete="off" required>
         </div>
-        <div class="form-group">
-          <label for="community-login-password">Password</label>
-          <input type="password" id="community-login-password" autocomplete="new-password" required>
+        <div class="login-field">
+          <input type="password" id="community-login-password" placeholder="Password" autocomplete="new-password" required>
         </div>
-        <div class="community-login-actions">
-          <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'; return false;">Kembali</button>
-          <button type="submit" class="btn btn-primary">Masuk Komunitas</button>
-        </div>
+        <button type="submit" class="login-btn">Masuk</button>
       </form>
-      <p style="margin-top: 16px; font-size: 13px; color: var(--gray-muted); text-align: center;">
-        Belum punya akun? <a href="index.html" onclick="navigateToPage('register'); return false;">Daftar di website</a>
-      </p>
+      <p class="login-footer">Belum punya akun? <a href="index.html">Daftar</a></p>
     </div>
   </div>
 
-  <!-- Main Community Page -->
-  <div class="community-page">
-    <!-- Header -->
-    <header class="community-header">
-      <div class="container">
-        <div class="header-content">
-          <div class="logo">
-            <div class="logo-icon">S</div>
-            <div class="logo-text">
-              <h1>Server_MC</h1>
-              <p>Komunitas</p>
+  <!-- App Container -->
+  <div class="app">
+    <!-- Server Sidebar -->
+    <nav class="server-sidebar">
+      <div class="server-icon server-logo" onclick="window.location.href='index.html'" title="Beranda">
+        <span>S</span>
+        <div class="server-tooltip">Beranda</div>
+      </div>
+      <div class="server-divider"></div>
+      
+      <div class="server-icon active" title="Server_MC Chat">
+        <span>💬</span>
+        <div class="server-tooltip">Chat</div>
+      </div>
+      <div class="server-icon" onclick="showFriends()" title="Teman">
+        <span>👥</span>
+        <div class="server-tooltip">Teman</div>
+      </div>
+      <div class="server-icon" onclick="showMusicPlaylist()" title="Musik">
+        <span>🎵</span>
+        <div class="server-tooltip">Musik</div>
+      </div>
+      
+      <div class="server-divider"></div>
+      
+      <div class="server-icon" onclick="showNotifications()" title="Notifikasi" style="position:relative;">
+        <span>🔔</span>
+        <span id="notification-badge" class="notif-badge hidden">0</span>
+        <div class="server-tooltip">Notifikasi</div>
+      </div>
+      <div class="server-icon" onclick="showSettingsModal()" title="Pengaturan">
+        <span>⚙️</span>
+        <div class="server-tooltip">Pengaturan</div>
+      </div>
+      
+      <div class="server-spacer"></div>
+      
+      <div class="server-icon" onclick="viewProfile(communityUser?.email)" title="Profil">
+        <span>👤</span>
+        <div class="server-tooltip">Profil</div>
+      </div>
+    </nav>
+
+    <!-- Channel Sidebar -->
+    <aside class="channel-sidebar">
+      <div class="channel-header">
+        <div class="channel-server-name">
+          <h2>Server_MC</h2>
+          <span class="channel-arrow">▼</span>
+        </div>
+        <div class="channel-user-mini">
+          <div class="channel-user-avatar" onclick="viewProfile(communityUser?.email)">👤</div>
+          <div class="channel-user-info">
+            <span id="channel-user-name">Guest</span>
+            <span id="channel-user-status" class="status-offline">⚫ Offline</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="channel-search">
+        <input type="text" id="chat-search-input" placeholder="Cari atau mulai chat..." oninput="filterChatList()">
+      </div>
+
+      <div class="channel-scroll">
+        <!-- Direct Messages -->
+        <div class="channel-category">
+          <div class="category-header">
+            <span class="category-arrow">▾</span>
+            <span>Pesan Pribadi</span>
+            <button class="category-add" onclick="showNewDmModal()" title="Chat Pribadi">✕</button>
+          </div>
+          <div id="dm-channel-list" class="channel-list"></div>
+        </div>
+
+        <!-- Groups -->
+        <div class="channel-category">
+          <div class="category-header">
+            <span class="category-arrow">▾</span>
+            <span>Grup</span>
+            <button class="category-add" onclick="showNewGroupModal()" title="Buat Grup">✕</button>
+          </div>
+          <div id="group-channel-list" class="channel-list"></div>
+        </div>
+
+        <!-- Channels -->
+        <div class="channel-category">
+          <div class="category-header">
+            <span class="category-arrow">▾</span>
+            <span>Channel</span>
+          </div>
+          <div id="text-channel-list" class="channel-list">
+            <div class="channel-item" data-channel="pengumuman" onclick="selectChannel('pengumuman')">
+              <span class="channel-hash">📢</span>
+              <span>pengumuman</span>
+            </div>
+            <div class="channel-item active" data-channel="umum" onclick="selectChannel('umum')">
+              <span class="channel-hash">#</span>
+              <span>umum</span>
+            </div>
+            <div class="channel-item" data-channel="diskusi" onclick="selectChannel('diskusi')">
+              <span class="channel-hash">#</span>
+              <span>diskusi</span>
+            </div>
+            <div class="channel-item" data-channel="media" onclick="selectChannel('media')">
+              <span class="channel-hash">#</span>
+              <span>media</span>
+            </div>
+            <div class="channel-item" data-channel="minecraft" onclick="selectChannel('minecraft')">
+              <span class="channel-hash">⛏️</span>
+              <span>minecraft</span>
             </div>
           </div>
-          <nav>
-            <a href="index.html">← Kembali ke Beranda</a>
-          </nav>
+        </div>
+
+        <!-- Voice Channels -->
+        <div class="channel-category">
+          <div class="category-header">
+            <span class="category-arrow">▾</span>
+            <span>Suara</span>
+          </div>
+          <div class="channel-list">
+            <div class="channel-item voice" onclick="joinMusicRoom()">
+              <span class="channel-hash">🔊</span>
+              <span>Music Lounge</span>
+              <span class="channel-voice-users">0</span>
+            </div>
+            <div class="channel-item voice" onclick="joinMusicRoom()">
+              <span class="channel-hash">🔊</span>
+              <span>Chill Vibes</span>
+              <span class="channel-voice-users">0</span>
+            </div>
+          </div>
         </div>
       </div>
-    </header>
 
-    <!-- Community Chat Interface -->
-    <main class="community-main">
-      <div class="container">
-        <!-- Discord-style Chat Interface -->
-        <div class="discord-app">
-          <!-- Sidebar 1 - Navigation Icons -->
-          <aside class="discord-server-sidebar">
-            <!-- Logo -->
-            <div class="discord-server-icon discord-logo-icon" onclick="window.location.href='index.html'; return false;" title="Server_MC">
-              <span style="font-size: 20px; font-weight: 700; color: var(--gold-primary);">S</span>
-            </div>
-            
-            <div class="discord-server-divider"></div>
-            
-            <!-- Navigation Icons -->
-            <div class="discord-server-icon" onclick="window.location.href='index.html'; return false;" title="Beranda">
-              <span>🏠</span>
-            </div>
-            <div class="discord-server-icon discord-server-active" title="Komunitas">
-              <span>💬</span>
-            </div>
-            <div class="discord-server-icon" onclick="showMessagesPanel()" title="Pesan">
-              <span>✉️</span>
-            </div>
-            <div class="discord-server-icon" onclick="showMusicPlaylist()" title="Playlist Musik">
-              <span>🎵</span>
-            </div>
-            <div class="discord-server-icon" onclick="showNotifications()" title="Notifikasi" style="position:relative;">
-              <span>🔔</span>
-              <span id="notification-badge" class="notification-badge hidden">0</span>
-            </div>
-            <div class="discord-server-icon" onclick="showFriends()" title="Teman">
-              <span>👥</span>
-            </div>
-            <div class="discord-server-icon" onclick="showBookmarks()" title="Bookmark">
-              <span>🔖</span>
-            </div>
-            
-            <div class="discord-server-divider"></div>
-            
-            <div class="discord-server-icon" onclick="showSettingsModal()" title="Pengaturan">
-              <span>⚙️</span>
-            </div>
-            
-            <div class="discord-server-divider"></div>
-            
-            <!-- Profile -->
-            <div class="discord-server-icon" onclick="viewProfile(communityUser?.email)" title="Profil Saya">
-              <span>👤</span>
-            </div>
-          </aside>
-
-          <!-- Sidebar 2 - Community Navigation -->
-          <aside class="discord-channel-sidebar">
-            <div class="discord-channel-header">
-              <h2>🏰 Komunitas Server_MC</h2>
-              <div class="discord-channel-user">
-                <div class="discord-user-avatar" id="discord-user-avatar" onclick="viewProfile(communityUser?.email)" style="cursor: pointer;">👤</div>
-                <span id="discord-user-name">Guest</span>
-                <div class="discord-user-status" id="discord-user-status">⚫</div>
-              </div>
-            </div>
-            
-            <div class="discord-channel-list">
-              <!-- Informasi Server -->
-              <div class="discord-channel-category">
-                <div class="discord-category-header">
-                  <span>📋 INFORMASI SERVER</span>
-                </div>
-                <div class="discord-text-channels">
-                  <div class="discord-text-channel" onclick="selectChannel('rules')">
-                    <span>📜</span>
-                    <span>Rules</span>
-                  </div>
-                  <div class="discord-text-channel" onclick="selectChannel('announcements')">
-                    <span>📢</span>
-                    <span>Pengumuman</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Text Channels -->
-              <div class="discord-channel-category">
-                <div class="discord-category-header">
-                  <span>💬 TEKS CHANNEL</span>
-                  <button class="discord-add-channel" onclick="showNewGroupModal()">+</button>
-                </div>
-                <div id="discord-text-channels" class="discord-text-channels">
-                  <div class="discord-text-channel active" onclick="selectChannel('general')">
-                    <span>#</span>
-                    <span>chat-umum</span>
-                  </div>
-                  <div class="discord-text-channel" onclick="selectChannel('diskusi')">
-                    <span>#</span>
-                    <span>diskusi</span>
-                  </div>
-                  <div class="discord-text-channel" onclick="selectChannel('media')">
-                    <span>#</span>
-                    <span>media</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Minecraft Channels -->
-              <div class="discord-channel-category">
-                <div class="discord-category-header">
-                  <span>⛏️ MINECRAFT</span>
-                </div>
-                <div class="discord-text-channels">
-                  <div class="discord-text-channel" onclick="selectChannel('minecraft-chat')">
-                    <span>#</span>
-                    <span>minecraft-chat</span>
-                  </div>
-                  <div class="discord-text-channel" onclick="selectChannel('build-showcase')">
-                    <span>#</span>
-                    <span>build-showcase</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Music Room -->
-              <div class="discord-channel-category">
-                <div class="discord-category-header">
-                  <span>🎵 MUSIC ROOM</span>
-                  <button class="discord-add-channel" onclick="showMusicRoomSettings()">+</button>
-                </div>
-                <div class="discord-voice-channels">
-                  <div class="discord-voice-channel" onclick="joinMusicRoom()">
-                    <span>🎧</span>
-                    <span>Music Lounge</span>
-                  </div>
-                  <div class="discord-voice-channel" onclick="joinMusicRoom()">
-                    <span>🎶</span>
-                    <span>Chill Vibes</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Bantuan -->
-              <div class="discord-channel-category">
-                <div class="discord-category-header">
-                  <span>❓ BANTUAN</span>
-                </div>
-                <div class="discord-text-channels">
-                  <div class="discord-text-channel" onclick="selectChannel('support')">
-                    <span>#</span>
-                    <span>support</span>
-                  </div>
-                  <div class="discord-text-channel" onclick="selectChannel('faq')">
-                    <span>#</span>
-                    <span>faq</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="discord-user-panel">
-              <div class="discord-user-info-panel">
-                <div class="discord-user-avatar-large" id="discord-user-avatar-large" onclick="viewProfile(communityUser?.email)" style="cursor: pointer;">👤</div>
-                <div class="discord-user-details-panel">
-                  <span id="discord-user-name-panel">Guest</span>
-                  <span id="discord-user-id">#0000</span>
-                </div>
-              </div>
-              <div class="discord-user-actions">
-                <button class="discord-user-action" onclick="toggleMute()" title="Mute">🔇</button>
-                <button class="discord-user-action" onclick="toggleDeafen()" title="Deafen">🔈</button>
-                <button class="discord-user-action" onclick="openCommunitySettings()" title="Pengaturan">⚙️</button>
-              </div>
-            </div>
-          </aside>
-
-          <!-- Main Chat Area -->
-          <section class="discord-chat-main" id="discord-chat-main">
-            <!-- Chat Header -->
-            <header class="discord-chat-header">
-              <div class="discord-chat-header-left">
-                <span class="discord-chat-hashtag">#</span>
-                <span id="discord-chat-name">chat-umum</span>
-                <div class="discord-chat-info">
-                  <span class="discord-chat-status" id="discord-chat-status">🟢 Online</span>
-                  <span class="discord-chat-members" id="discord-chat-members">0 Member</span>
-                </div>
-              </div>
-              <div class="discord-chat-header-right">
-                <div class="discord-search-box">
-                  <input type="search" placeholder="Cari pesan..." autocomplete="off" id="chat-search-input">
-                </div>
-                <button class="discord-header-icon" onclick="togglePin()" title="Pin Channel">📌</button>
-                <button class="discord-header-icon" onclick="openChatSettings()" title="Info Grup">ℹ️</button>
-                <button class="discord-header-icon" onclick="inviteMember()" title="Undang Member">➕</button>
-                <button class="discord-header-icon" onclick="toggleMemberList()" title="Member List">👥</button>
-              </div>
-            </header>
-
-            <!-- Chat Messages -->
-            <div id="discord-messages" class="discord-messages">
-              <div class="discord-welcome">
-                <div class="discord-welcome-icon">💬</div>
-                <h2>Selamat datang di #general!</h2>
-                <p>Ini adalah awal dari channel #general.</p>
-              </div>
-            </div>
-
-            <!-- Chat Input -->
-            <div class="discord-chat-input">
-              <button class="discord-input-icon">➕</button>
-              <form class="discord-input-form" onsubmit="sendCommunityMessage(event)">
-                <input type="text" id="discord-message-input" placeholder="Kirim pesan ke #chat-umum" maxlength="2000" autocomplete="off">
-                <div class="discord-input-icons">
-                  <button type="button" class="discord-input-icon">😊</button>
-                  <button type="button" class="discord-input-icon">📎</button>
-                </div>
-              </form>
-            </div>
-            
-            <!-- Music Player -->
-            <div class="music-player" id="music-player">
-              <div class="music-player-info">
-                <div class="music-cover">
-                  <span>🎵</span>
-                </div>
-                <div class="music-details">
-                  <div class="music-title" id="music-title">No Track Playing</div>
-                  <div class="music-artist" id="music-artist">-</div>
-                </div>
-              </div>
-              <div class="music-player-controls">
-                <button class="music-control-btn" onclick="musicShuffle()" title="Shuffle">🔀</button>
-                <button class="music-control-btn" onclick="musicPrevious()" title="Previous">⏮️</button>
-                <button class="music-control-btn music-play-btn" onclick="musicPlayPause()" title="Play/Pause">▶️</button>
-                <button class="music-control-btn" onclick="musicNext()" title="Next">⏭️</button>
-                <button class="music-control-btn" onclick="musicRepeat()" title="Repeat">🔁</button>
-              </div>
-              <div class="music-player-volume">
-                <button class="music-volume-btn" onclick="toggleMute()" title="Mute">🔊</button>
-                <input type="range" class="music-volume-slider" min="0" max="100" value="70" id="music-volume" oninput="setVolume(this.value)">
-              </div>
-              <div class="music-progress">
-                <span class="music-time" id="music-current-time">0:00</span>
-                <div class="music-progress-bar">
-                  <div class="music-progress-fill" id="music-progress-fill" style="width: 0%"></div>
-                </div>
-                <span class="music-time" id="music-total-time">0:00</span>
-              </div>
-            </div>
-          </section>
-
-          <!-- Member Sidebar -->
-          <aside class="discord-member-sidebar">
-            <div class="discord-member-header">
-              <span id="discord-member-count">Member — 0</span>
-            </div>
-            <div id="discord-member-list" class="discord-member-list">
-              <!-- OWNER -->
-              <div class="discord-member-category">
-                <div class="discord-member-category-header">
-                  <span>👑 OWNER</span>
-                </div>
-                <div class="discord-member-group" id="member-owner"></div>
-              </div>
-              
-              <!-- ADMIN -->
-              <div class="discord-member-category">
-                <div class="discord-member-category-header">
-                  <span>🛡️ ADMIN</span>
-                </div>
-                <div class="discord-member-group" id="member-admin"></div>
-              </div>
-              
-              <!-- MODERATOR -->
-              <div class="discord-member-category">
-                <div class="discord-member-category-header">
-                  <span>⚔️ MODERATOR</span>
-                </div>
-                <div class="discord-member-group" id="member-moderator"></div>
-              </div>
-              
-              <!-- ONLINE -->
-              <div class="discord-member-category">
-                <div class="discord-member-category-header">
-                  <span>🟢 ONLINE</span>
-                </div>
-                <div class="discord-member-group" id="member-online"></div>
-              </div>
-              
-              <!-- OFFLINE -->
-              <div class="discord-member-category">
-                <div class="discord-member-category-header">
-                  <span>⚫ OFFLINE</span>
-                </div>
-                <div class="discord-member-group" id="member-offline"></div>
-              </div>
-            </div>
-          </aside>
+      <!-- User Panel Bottom -->
+      <div class="user-panel">
+        <div class="user-panel-left">
+          <div class="user-panel-avatar" onclick="viewProfile(communityUser?.email)">👤</div>
+          <div class="user-panel-details">
+            <span id="user-panel-name">Guest</span>
+            <span id="user-panel-id">#0000</span>
+          </div>
         </div>
+        <div class="user-panel-actions">
+          <button class="user-panel-btn" onclick="toggleMute()" title="Mute">🎤</button>
+          <button class="user-panel-btn" onclick="toggleDeafen()" title="Deafen">🔇</button>
+          <button class="user-panel-btn" onclick="showSettingsModal()" title="Pengaturan">⚙️</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-main">
+      <!-- Chat Header -->
+      <header class="chat-header" id="chat-header">
+        <div class="chat-header-left">
+          <span class="chat-hashtag">#</span>
+          <div class="chat-header-info">
+            <h3 id="chat-header-name">umum</h3>
+            <div class="chat-header-meta">
+              <span id="chat-header-status" class="chat-status-online">🟢</span>
+              <span id="chat-header-members">0 anggota</span>
+            </div>
+          </div>
+        </div>
+        <div class="chat-header-right">
+          <button class="chat-header-btn" onclick="toggleMemberList()" title="Anggota">👥</button>
+          <button class="chat-header-btn" onclick="inviteMember()" title="Undang">➕</button>
+          <button class="chat-header-btn" onclick="openChatSettings()" title="Info">ℹ️</button>
+        </div>
+      </header>
+
+      <!-- Messages -->
+      <div id="chat-messages" class="chat-messages">
+        <div class="chat-welcome" id="chat-welcome">
+          <div class="chat-welcome-icon">💬</div>
+          <h2>Selamat datang di #umum</h2>
+          <p>Mulai percakapan bersama komunitas Server_MC.</p>
+        </div>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="chat-input-area">
+        <form class="chat-input-wrap" onsubmit="sendCommunityMessage(event)">
+          <button type="button" class="chat-input-plus">＋</button>
+          <input type="text" id="chat-message-input" placeholder="Ketik pesan ke #umum" maxlength="2000" autocomplete="off">
+          <div class="chat-input-actions">
+            <button type="button" class="chat-input-action" title="Emoji">😊</button>
+            <button type="button" class="chat-input-action" title="Lampiran">📎</button>
+          </div>
+        </form>
       </div>
     </main>
-  </div>
 
-  <!-- Modal: Buat Grup -->
-  <div id="new-group-modal" class="chat-modal hidden" onclick="if(event.target===this) hideNewGroupModal();">
-    <div class="chat-modal-card">
-      <div class="chat-modal-header">
-        <h3>Buat Grup Baru</h3>
-        <button type="button" class="chat-modal-close" onclick="hideNewGroupModal(); return false;">×</button>
+    <!-- Member Sidebar -->
+    <aside class="member-sidebar" id="member-sidebar">
+      <div class="member-header">
+        <span id="member-count-header">Anggota — 0</span>
       </div>
-      <form onsubmit="handleCreateGroup(event)">
-        <div class="form-group">
-          <label for="group-name">Nama Grup</label>
-          <input type="text" id="group-name" maxlength="60" placeholder="Contoh: Builder Squad" required>
+      <div class="member-scroll" id="member-scroll">
+        <div class="member-role-section">
+          <div class="member-role-header">
+            <span>👑 OWNER — <span id="member-owner-count">0</span></span>
+          </div>
+          <div id="member-owner" class="member-list"></div>
         </div>
-        <div class="form-group">
-          <label>Pilih Anggota</label>
-          <div id="group-member-picker" class="member-picker"></div>
+        <div class="member-role-section">
+          <div class="member-role-header">
+            <span>🛡️ ADMIN — <span id="member-admin-count">0</span></span>
+          </div>
+          <div id="member-admin" class="member-list"></div>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Buat Grup</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: Chat Pribadi -->
-  <div id="new-dm-modal" class="chat-modal hidden" onclick="if(event.target===this) hideNewDmModal();">
-    <div class="chat-modal-card">
-      <div class="chat-modal-header">
-        <h3>Mulai Chat Pribadi</h3>
-        <button type="button" class="chat-modal-close" onclick="hideNewDmModal(); return false;">×</button>
+        <div class="member-role-section">
+          <div class="member-role-header">
+            <span>🟢 ONLINE — <span id="member-online-count">0</span></span>
+          </div>
+          <div id="member-online" class="member-list"></div>
+        </div>
+        <div class="member-role-section">
+          <div class="member-role-header">
+            <span>⚫ OFFLINE — <span id="member-offline-count">0</span></span>
+          </div>
+          <div id="member-offline" class="member-list"></div>
+        </div>
       </div>
-      <input type="search" id="dm-member-search" placeholder="Cari member..." autocomplete="off" oninput="filterDmMemberList()">
-      <div id="dm-member-list" class="member-picker dm-member-list"></div>
-    </div>
+    </aside>
   </div>
 
   <!-- Profile Modal -->
-  <div id="profile-modal" class="chat-modal hidden" onclick="if(event.target===this) hideProfileModal();">
-    <div class="chat-modal-card profile-modal-card">
-      <div class="chat-modal-header">
-        <h3>Profil Akun</h3>
-        <button type="button" class="chat-modal-close" onclick="hideProfileModal(); return false;">×</button>
+  <div id="profile-modal" class="modal-overlay hidden" onclick="if(event.target===this) hideProfileModal();">
+    <div class="modal-card profile-card">
+      <div class="profile-banner"></div>
+      <div class="profile-avatar-section">
+        <div id="profile-avatar" class="profile-avatar">👤</div>
       </div>
-      
-      <!-- Profile Banner & Avatar -->
-      <div class="profile-banner-section">
-        <div class="profile-banner"></div>
-        <div class="profile-avatar-wrapper">
-          <div id="profile-avatar" class="profile-avatar-large">👤</div>
-        </div>
-      </div>
-      
-      <div class="profile-info-section">
-        <div id="profile-name" class="profile-name">Member</div>
-        <div id="profile-username" class="profile-username">@username</div>
+      <div class="profile-body">
+        <div id="profile-name" class="profile-display-name">Member</div>
+        <div id="profile-username" class="profile-display-username">@username</div>
         <span id="profile-role" class="profile-role-badge">Member</span>
         <p id="profile-bio" class="profile-bio">Tentang saya...</p>
-      </div>
-      
-      <!-- Profile Tabs -->
-      <div class="profile-tabs">
-        <button class="profile-tab active" data-tab="overview" onclick="switchProfileTab('overview')">Overview</button>
-        <button class="profile-tab" data-tab="media" onclick="switchProfileTab('media')">Media</button>
-        <button class="profile-tab" data-tab="playlist" onclick="switchProfileTab('playlist')">Playlist</button>
-        <button class="profile-tab" data-tab="friends" onclick="switchProfileTab('friends')">Teman</button>
-        <button class="profile-tab" data-tab="collection" onclick="switchProfileTab('collection')">Koleksi</button>
-      </div>
-      
-      <!-- Tab Content -->
-      <div class="profile-tab-content">
-        <div id="tab-overview" class="profile-tab-pane active">
-          <div class="profile-stats">
-            <div class="profile-stat-item">
-              <span class="profile-stat-value" id="stat-join-date">-</span>
-              <span class="profile-stat-label">Bergabung</span>
-            </div>
-            <div class="profile-stat-item">
-              <span class="profile-stat-value" id="stat-messages">0</span>
-              <span class="profile-stat-label">Pesan</span>
-            </div>
-            <div class="profile-stat-item">
-              <span class="profile-stat-value" id="stat-friends">0</span>
-              <span class="profile-stat-label">Teman</span>
-            </div>
-          </div>
-          <div id="profile-details"></div>
-        </div>
         
-        <div id="tab-media" class="profile-tab-pane">
-          <div class="profile-empty-state">
-            <span>📷</span>
-            <p>Belum ada media</p>
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="stat-join-date">-</span>
+            <span class="profile-stat-label">Bergabung</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="stat-messages">0</span>
+            <span class="profile-stat-label">Pesan</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="stat-friends">0</span>
+            <span class="profile-stat-label">Teman</span>
           </div>
         </div>
         
-        <div id="tab-playlist" class="profile-tab-pane">
-          <div class="profile-empty-state">
-            <span>🎵</span>
-            <p>Belum ada playlist</p>
-          </div>
-        </div>
+        <div id="profile-details"></div>
         
-        <div id="tab-friends" class="profile-tab-pane">
-          <div class="profile-empty-state">
-            <span>👥</span>
-            <p>Belum ada teman</p>
-          </div>
-        </div>
-        
-        <div id="tab-collection" class="profile-tab-pane">
-          <div class="profile-empty-state">
-            <span>📚</span>
-            <p>Belum ada koleksi</p>
-          </div>
+        <div class="profile-actions">
+          <button class="btn btn-primary" id="profile-chat-btn" onclick="profileStartChat()">Kirim Pesan</button>
+          <button class="btn btn-secondary" onclick="hideProfileModal()">Tutup</button>
         </div>
       </div>
-      
-      <div class="profile-actions">
-        <button type="button" class="btn btn-primary" id="profile-chat-btn" onclick="profileStartChat(); return false;">Kirim Pesan</button>
-        <button type="button" class="btn btn-secondary" onclick="hideProfileModal(); return false;">Tutup</button>
+    </div>
+  </div>
+
+  <!-- Group Modal -->
+  <div id="new-group-modal" class="modal-overlay hidden" onclick="if(event.target===this) hideNewGroupModal();">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Buat Grup</h3>
+        <button class="modal-close" onclick="hideNewGroupModal()">✕</button>
+      </div>
+      <form onsubmit="handleCreateGroup(event)" class="modal-body">
+        <input type="text" id="group-name" placeholder="Nama grup" maxlength="60" required>
+        <div class="modal-label">Pilih anggota</div>
+        <div id="group-member-picker" class="member-picker"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:12px;">Buat Grup</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DM Modal -->
+  <div id="new-dm-modal" class="modal-overlay hidden" onclick="if(event.target===this) hideNewDmModal();">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Chat Pribadi</h3>
+        <button class="modal-close" onclick="hideNewDmModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="dm-member-search" placeholder="Cari member..." oninput="filterDmMemberList()">
+        <div id="dm-member-list" class="dm-list"></div>
       </div>
     </div>
   </div>
 
   <!-- Settings Modal -->
-  <div id="settings-modal" class="chat-modal hidden" onclick="if(event.target===this) hideSettingsModal();">
-    <div class="chat-modal-card settings-modal-card">
-      <div class="chat-modal-header">
+  <div id="settings-modal" class="modal-overlay hidden" onclick="if(event.target===this) hideSettingsModal();">
+    <div class="modal-card settings-card">
+      <div class="modal-header">
         <h3>Pengaturan</h3>
-        <button type="button" class="chat-modal-close" onclick="hideSettingsModal(); return false;">×</button>
+        <button class="modal-close" onclick="hideSettingsModal()">✕</button>
       </div>
-      
-      <div class="settings-layout">
-        <!-- Settings Categories -->
-        <div class="settings-categories">
-          <button class="settings-category active" data-category="account" onclick="switchSettingsCategory('account')">
-            <span>👤</span>
-            <span>Akun</span>
-          </button>
-          <button class="settings-category" data-category="personalization" onclick="switchSettingsCategory('personalization')">
-            <span>🎨</span>
-            <span>Personalisasi</span>
-          </button>
-          <button class="settings-category" data-category="community" onclick="switchSettingsCategory('community')">
-            <span>👥</span>
-            <span>Komunitas</span>
-          </button>
-          <button class="settings-category" data-category="media" onclick="switchSettingsCategory('media')">
-            <span>📷</span>
-            <span>Media</span>
-          </button>
-          <button class="settings-category" data-category="music" onclick="switchSettingsCategory('music')">
-            <span>🎵</span>
-            <span>Musik</span>
-          </button>
-          <button class="settings-category" data-category="accessibility" onclick="switchSettingsCategory('accessibility')">
-            <span>♿</span>
-            <span>Aksesibilitas</span>
-          </button>
+      <div class="settings-body">
+        <div class="settings-nav">
+          <button class="settings-nav-item active" data-cat="account" onclick="switchSettings('account')">👤 Akun</button>
+          <button class="settings-nav-item" data-cat="personalization" onclick="switchSettings('personalization')">🎨 Tampilan</button>
+          <button class="settings-nav-item" data-cat="community" onclick="switchSettings('community')">👥 Komunitas</button>
+          <button class="settings-nav-item" data-cat="music" onclick="switchSettings('music')">🎵 Musik</button>
+          <button class="settings-nav-item" data-cat="accessibility" onclick="switchSettings('accessibility')">♿ Akses</button>
         </div>
-        
-        <!-- Settings Content -->
         <div class="settings-content">
-          <div id="settings-account" class="settings-pane active">
+          <div id="sett-account" class="settings-pane active">
             <h4>Akun</h4>
-            <div class="settings-section">
-              <h5>Profil</h5>
-              <button class="settings-btn" onclick="editProfile()">Edit Profil</button>
-              <button class="settings-btn" onclick="changeAvatar()">Ganti Avatar</button>
-              <button class="settings-btn" onclick="changeBanner()">Ganti Banner</button>
+            <button class="settings-btn" onclick="editProfile()">Edit Profil</button>
+            <button class="settings-btn" onclick="changeAvatar()">Ganti Avatar</button>
+            <button class="settings-btn" onclick="changeBanner()">Ganti Banner</button>
+          </div>
+          <div id="sett-personalization" class="settings-pane">
+            <h4>Tampilan</h4>
+            <div class="settings-row">
+              <label>Tema</label>
+              <select class="settings-select" onchange="saveSettings()">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
             </div>
-            <div class="settings-section">
-              <h5>Keamanan</h5>
-              <button class="settings-btn" onclick="changeUsername()">Ganti Username</button>
-              <button class="settings-btn" onclick="changePassword()">Ganti Password</button>
-              <button class="settings-btn" onclick="changeEmail()">Ganti Email</button>
+            <div class="settings-row">
+              <label>Aksen</label>
+              <select class="settings-select" onchange="saveSettings()">
+                <option value="gold">Gold</option>
+                <option value="blue">Blue</option>
+                <option value="purple">Purple</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label>Ukuran Font</label>
+              <select class="settings-select" onchange="saveSettings()">
+                <option value="small">Kecil</option>
+                <option value="medium" selected>Sedang</option>
+                <option value="large">Besar</option>
+              </select>
             </div>
           </div>
-          
-          <div id="settings-personalization" class="settings-pane">
-            <h4>Personalisasi</h4>
-            <div class="settings-section">
-              <h5>Tampilan</h5>
-              <div class="settings-item">
-                <label>Tema</label>
-                <select class="settings-select">
-                  <option value="dark">Dark (Default)</option>
-                  <option value="light">Light</option>
-                </select>
-              </div>
-              <div class="settings-item">
-                <label>Warna Aksen</label>
-                <select class="settings-select">
-                  <option value="gold">Gold (Default)</option>
-                  <option value="blue">Blue</option>
-                  <option value="purple">Purple</option>
-                </select>
-              </div>
-            </div>
-            <div class="settings-section">
-              <h5>Bahasa</h5>
-              <div class="settings-item">
-                <label>Bahasa</label>
-                <select class="settings-select">
-                  <option value="id">Indonesia</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div id="settings-community" class="settings-pane">
+          <div id="sett-community" class="settings-pane">
             <h4>Komunitas</h4>
-            <div class="settings-section">
-              <h5>Notifikasi</h5>
-              <div class="settings-item">
-                <label>Notifikasi Pesan</label>
-                <input type="checkbox" checked class="settings-checkbox">
-              </div>
-              <div class="settings-item">
-                <label>Notifikasi Mention</label>
-                <input type="checkbox" checked class="settings-checkbox">
-              </div>
+            <div class="settings-row">
+              <label>Notifikasi Pesan</label>
+              <input type="checkbox" checked class="settings-checkbox" onchange="saveSettings()">
             </div>
-            <div class="settings-section">
-              <h5>Privasi</h5>
-              <div class="settings-item">
-                <label>Profil Publik</label>
-                <input type="checkbox" checked class="settings-checkbox">
-              </div>
-              <div class="settings-item">
-                <label>Tampilkan Status Online</label>
-                <input type="checkbox" checked class="settings-checkbox">
-              </div>
+            <div class="settings-row">
+              <label>Notifikasi Mention</label>
+              <input type="checkbox" checked class="settings-checkbox" onchange="saveSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Tampilkan Status</label>
+              <input type="checkbox" checked class="settings-checkbox" onchange="saveSettings()">
             </div>
           </div>
-          
-          <div id="settings-media" class="settings-pane">
-            <h4>Media</h4>
-            <div class="settings-section">
-              <h5>Upload</h5>
-              <div class="settings-item">
-                <label>Auto Download Media</label>
-                <input type="checkbox" class="settings-checkbox">
-              </div>
-              <div class="settings-item">
-                <label>Kualitas Gambar</label>
-                <select class="settings-select">
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div id="settings-music" class="settings-pane">
+          <div id="sett-music" class="settings-pane">
             <h4>Musik</h4>
-            <div class="settings-section">
-              <h5>Player</h5>
-              <div class="settings-item">
-                <label>Auto Play</label>
-                <input type="checkbox" class="settings-checkbox">
-              </div>
-              <div class="settings-item">
-                <label>Background Play</label>
-                <input type="checkbox" class="settings-checkbox">
-              </div>
-              <div class="settings-item">
-                <label>Volume Default</label>
-                <input type="range" min="0" max="100" value="70" class="settings-range">
-              </div>
+            <div class="settings-row">
+              <label>Auto Play</label>
+              <input type="checkbox" class="settings-checkbox" onchange="saveSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Background Play</label>
+              <input type="checkbox" class="settings-checkbox" onchange="saveSettings()">
             </div>
           </div>
-          
-          <div id="settings-accessibility" class="settings-pane">
+          <div id="sett-accessibility" class="settings-pane">
             <h4>Aksesibilitas</h4>
-            <div class="settings-section">
-              <h5>Tampilan</h5>
-              <div class="settings-item">
-                <label>Ukuran Font</label>
-                <select class="settings-select">
-                  <option value="small">Kecil</option>
-                  <option value="medium" selected>Sedang</option>
-                  <option value="large">Besar</option>
-                </select>
-              </div>
-              <div class="settings-item">
-                <label>Kontras</label>
-                <select class="settings-select">
-                  <option value="normal">Normal</option>
-                  <option value="high">Tinggi</option>
-                </select>
-              </div>
+            <div class="settings-row">
+              <label>Kontras Tinggi</label>
+              <input type="checkbox" class="settings-checkbox" onchange="saveSettings()">
             </div>
           </div>
         </div>
@@ -658,12 +416,86 @@
     </div>
   </div>
 
+  <!-- Notification Modal -->
+  <div id="notification-modal" class="modal-overlay hidden" onclick="if(event.target===this) this.classList.add('hidden');">
+    <div class="modal-card" style="max-width:400px;">
+      <div class="modal-header">
+        <h3>🔔 Notifikasi</h3>
+        <button class="modal-close" onclick="document.getElementById('notification-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div id="notification-list" class="modal-body" style="max-height:400px;overflow-y:auto;padding:0;">
+        <p style="text-align:center;color:var(--text-muted);padding:30px;">Belum ada notifikasi.</p>
+      </div>
+      <div class="modal-footer" id="notification-footer" style="display:none;">
+        <button class="btn btn-secondary" style="width:100%;border-radius:0 0 14px 14px;" onclick="NotificationSystem.markAllRead();renderNotifications();">Tandai Semua Dibaca</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Friend Modal -->
+  <div id="friends-modal" class="modal-overlay hidden" onclick="if(event.target===this) this.classList.add('hidden');">
+    <div class="modal-card" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>👥 Teman</h3>
+        <button class="modal-close" onclick="document.getElementById('friends-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input type="text" id="friend-search-input" placeholder="Cari atau tambah (email)..." style="flex:1;">
+          <button class="btn btn-primary" onclick="addFriendFromSearch()">Tambah</button>
+        </div>
+        <div id="friend-list" style="max-height:350px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Playlist Modal -->
+  <div id="playlist-modal" class="modal-overlay hidden" onclick="if(event.target===this) this.classList.add('hidden');">
+    <div class="modal-card" style="max-width:480px;">
+      <div class="modal-header">
+        <h3>🎵 Playlist</h3>
+        <button class="modal-close" onclick="document.getElementById('playlist-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input type="text" id="playlist-url-input" placeholder="URL lagu..." style="flex:1;">
+          <button class="btn btn-primary" onclick="addTrackFromUrl()">Tambah</button>
+        </div>
+        <div id="playlist-tracks" style="max-height:300px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Music Player Bar -->
+  <div id="music-player-bar" class="music-bar hidden">
+    <div class="music-bar-info">
+      <div class="music-bar-cover">🎵</div>
+      <div class="music-bar-details">
+        <div class="music-bar-title" id="music-title">No Track</div>
+        <div class="music-bar-artist" id="music-artist">-</div>
+      </div>
+    </div>
+    <div class="music-bar-controls">
+      <button class="music-bar-btn" onclick="MusicEngine.toggleShuffle()" title="Shuffle">🔀</button>
+      <button class="music-bar-btn" onclick="MusicEngine.previous()" title="Previous">⏮️</button>
+      <button class="music-bar-btn music-bar-play" onclick="MusicEngine.togglePlay()" title="Play/Pause">▶️</button>
+      <button class="music-bar-btn" onclick="MusicEngine.next()" title="Next">⏭️</button>
+      <button class="music-bar-btn" onclick="MusicEngine.toggleRepeat()" title="Repeat">🔁</button>
+    </div>
+    <div class="music-bar-progress">
+      <span class="music-time" id="music-current-time">0:00</span>
+      <div class="music-progress-track">
+        <div class="music-progress-fill" id="music-progress-fill" style="width:0%"></div>
+      </div>
+      <span class="music-time" id="music-total-time">0:00</span>
+    </div>
+    <div class="music-bar-volume">
+      <button class="music-bar-btn" onclick="toggleMute()" title="Volume">🔊</button>
+      <input type="range" class="music-volume-slider" min="0" max="100" value="70" oninput="MusicEngine.setVolume(this.value)">
+    </div>
+  </div>
+
   <script src="js/app.js"></script>
   <script src="js/komunitas.js"></script>
-  
-  <!-- Floating Button for Community -->
-  <div id="community-fab-wrap" class="community-fab-wrap">
-    <button type="button" id="community-fab" class="community-fab" onclick="window.location.href='index.html'; return false;" aria-label="Kembali ke Beranda">🏠</button>
-  </div>
 </body>
 </html>
