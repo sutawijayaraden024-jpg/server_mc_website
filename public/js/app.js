@@ -22,14 +22,15 @@ const ADMIN_ACCOUNTS = [
   },
   {
     email: 'khumairaputry3@gmail.com',
-    name: 'people1975',
+    name: 'Al170',
     xuid: '',
-    minecraft_name: 'people1975',
+    minecraft_name: 'Al170',
     role: 'admin'
   }
 ];
 initializeAccountStore();
 migrateLegacyAccountData();
+reconcileStoredUsers();
 let registeredUsers = loadUsers();
 let onlinePlayers = loadOnlinePlayers();
 let sessions = loadSessions();
@@ -71,11 +72,11 @@ function initializeAccountStore() {
 
       {
         id: 2,
-        name: 'people1975',
+        name: 'Al170',
         email: 'khumairaputry3@gmail.com',
         role: 'admin',
         xuid: '',
-        minecraft_name: 'people1975',
+        minecraft_name: 'Al170',
         joined_at: new Date().toISOString()
       }
     ]));
@@ -260,6 +261,14 @@ async function syncBackendState() {
       onlinePlayers = data.online.map(user => normalizeUser(user));
       saveOnlinePlayers();
     }
+    reconcileStoredUsers();
+    registeredUsers = loadUsers();
+    onlinePlayers = loadOnlinePlayers();
+    if (currentUser) {
+      currentUser = normalizeUser(currentUser);
+      localStorage.setItem('servermc_user', JSON.stringify(currentUser));
+      updateAuthUI();
+    }
     renderPlayerDataSection();
     return data;
   } catch {
@@ -275,7 +284,6 @@ async function syncAuthRegister(user) {
       username: user.name,
       email: user.email,
       password: user.password || '',
-      role: user.role,
       xuid: user.xuid || '',
       minecraft_name: user.minecraft_name || ''
     })
@@ -326,17 +334,34 @@ async function syncServerLeave(user) {
   });
 }
 
+function resolveRole(email) {
+  return getAdminAccount(email) ? 'admin' : 'member';
+}
+
+function reconcileStoredUsers() {
+  const users = loadUsers().map(normalizeUser);
+  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+
+  const online = loadOnlinePlayers().map(normalizeUser);
+  localStorage.setItem(STORAGE_KEYS.online, JSON.stringify(online));
+
+  const storedUser = localStorage.getItem('servermc_user');
+  if (storedUser) {
+    try {
+      localStorage.setItem('servermc_user', JSON.stringify(normalizeUser(JSON.parse(storedUser))));
+    } catch {}
+  }
+}
+
 function normalizeUser(user) {
   const email = (user.email || '').toLowerCase();
   const name = user.name || user.username || email.split('@')[0] || 'Player';
-  const role = user.role === 'admin' || user.role === 'operator' ? 'admin' : 'member';
   const adminAccount = getAdminAccount(email);
-  const isAdmin = Boolean(adminAccount);
   return {
     id: user.id || Math.floor(Math.random() * 100000),
     name: adminAccount?.name || name,
     email,
-    role: isAdmin ? 'admin' : role,
+    role: resolveRole(email),
     password: isRemoteAuthAvailable() ? '' : (user.password || ''),
     xuid: user.xuid || adminAccount?.xuid || '',
     minecraft_name: user.minecraft_name || user.minecraftName || adminAccount?.minecraft_name || '',
@@ -454,7 +479,6 @@ function checkAuth() {
             ...currentUser,
             email: result.email || currentUser.email,
             name: result.username || currentUser.name,
-            role: result.role || currentUser.role,
             xuid: result.xuid || currentUser.xuid
           });
           updateAuthUI();
@@ -657,11 +681,10 @@ function handleRegister(event) {
 
   clearVerificationCode(email);
   const adminAccount = getAdminAccount(email);
-  const role = adminAccount ? 'admin' : 'member';
   const user = {
     name,
     email,
-    role,
+    role: resolveRole(email),
     password,
     xuid: adminAccount?.xuid || '',
     minecraft_name: adminAccount?.minecraft_name || ''
@@ -674,14 +697,13 @@ function handleRegister(event) {
         username: user.name,
         email: user.email,
         password: user.password,
-        role: user.role,
         xuid: user.xuid,
         minecraft_name: user.minecraft_name
       })
     }).then(result => {
       const savedUser = saveRegisteredUser({
         ...user,
-        role: result?.role || user.role,
+        role: resolveRole(email),
         xuid: result?.xuid || user.xuid,
         minecraft_name: result?.username || user.name || user.minecraft_name
       });
@@ -724,7 +746,7 @@ function handleLogin(event) {
       const localUser = saveRegisteredUser({
         name: result.username || email.split('@')[0],
         email,
-        role: result.role || 'member',
+        role: resolveRole(email),
         password,
         xuid: result.xuid || '',
         minecraft_name: result.username || ''
