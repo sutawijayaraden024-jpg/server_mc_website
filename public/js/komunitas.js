@@ -47,7 +47,11 @@ const MusicEngine = {
     this.audio.addEventListener('timeupdate', () => this.updateProgress());
     this.audio.addEventListener('ended', () => this.onTrackEnd());
     this.audio.addEventListener('loadedmetadata', () => {
-      document.getElementById('music-total-time').textContent = this.formatTime(this.audio.duration);
+      const totalStr = this.formatTime(this.audio.duration);
+      const nanoTotal = document.getElementById('nano-total-time');
+      if (nanoTotal) nanoTotal.textContent = totalStr;
+      const bubbleTotal = document.getElementById('bubble-total-time');
+      if (bubbleTotal) bubbleTotal.textContent = totalStr;
     });
     this.audio.addEventListener('error', (e) => showToast('Gagal memutar: ' + (e.target?.error?.message || 'format tidak didukung')));
     this.loadState();
@@ -79,11 +83,15 @@ const MusicEngine = {
     this.currentTrack = track;
     this.audio.src = track.track_url || '';
     this.audio.load();
-    document.getElementById('music-title').textContent = track.track_name || 'No Track';
-    document.getElementById('music-artist').textContent = track.artist || '-';
+    // Update Nano Player
+    document.getElementById('nano-title').textContent = track.track_name || 'No Track';
+    // Update Bubble Player
+    document.getElementById('bubble-title').textContent = track.track_name || 'No Track';
+    document.getElementById('bubble-artist').textContent = track.artist || '-';
     if (this.isPlaying) this.audio.play().catch(() => {});
     this.updatePlayBtn();
-    document.getElementById('music-player-bar')?.classList.remove('hidden');
+    this.showPlayer();
+    renderBubblePlaylist();
   },
 
   play() {
@@ -121,16 +129,42 @@ const MusicEngine = {
 
   seek(position) { if (this.audio && this.audio.duration) this.audio.currentTime = (position / 100) * this.audio.duration; },
 
+  showPlayer() {
+    document.getElementById('nano-player')?.classList.remove('hidden');
+    document.getElementById('bubble-toggle')?.classList.remove('hidden');
+  },
+
   updateProgress() {
     if (!this.audio || !this.audio.duration) return;
     const pct = (this.audio.currentTime / this.audio.duration) * 100;
-    document.getElementById('music-progress-fill').style.width = pct + '%';
-    document.getElementById('music-current-time').textContent = this.formatTime(this.audio.currentTime);
+    const pctStr = pct + '%';
+    // Nano
+    const nanoFill = document.getElementById('nano-progress-fill');
+    if (nanoFill) nanoFill.style.width = pctStr;
+    const nanoTime = document.getElementById('nano-current-time');
+    if (nanoTime) nanoTime.textContent = this.formatTime(this.audio.currentTime);
+    // Bubble
+    const bubbleFill = document.getElementById('bubble-progress-fill');
+    if (bubbleFill) bubbleFill.style.width = pctStr;
+    const bubbleTime = document.getElementById('bubble-current-time');
+    if (bubbleTime) bubbleTime.textContent = this.formatTime(this.audio.currentTime);
+    // Total time (both)
+    const totalStr = this.formatTime(this.audio.duration);
+    const nanoTotal = document.getElementById('nano-total-time');
+    if (nanoTotal) nanoTotal.textContent = totalStr;
+    const bubbleTotal = document.getElementById('bubble-total-time');
+    if (bubbleTotal) bubbleTotal.textContent = totalStr;
   },
 
   formatTime(s) { if (!s || isNaN(s)) return '0:00'; const m = Math.floor(s / 60); const sec = Math.floor(s % 60); return m + ':' + (sec < 10 ? '0' : '') + sec; },
 
-  updatePlayBtn() { const btn = document.querySelector('.music-bar-play'); if (btn) btn.textContent = this.isPlaying ? '⏸️' : '▶️'; },
+  updatePlayBtn() {
+    const sym = this.isPlaying ? '⏸' : '▶';
+    const nanoBtn = document.getElementById('nano-play-btn');
+    if (nanoBtn) nanoBtn.textContent = sym;
+    const bubbleBtn = document.getElementById('bubble-play-btn');
+    if (bubbleBtn) bubbleBtn.textContent = sym;
+  },
 
   toggleShuffle() { this.shuffle = !this.shuffle; this.saveState(); showToast(this.shuffle ? '🔀 Shuffle ON' : '🔀 Shuffle OFF'); },
   toggleRepeat() { const modes = ['none', 'one', 'all']; const i = modes.indexOf(this.repeat); this.repeat = modes[(i + 1) % 3]; this.saveState(); showToast('🔁 Repeat: ' + this.repeat); },
@@ -596,6 +630,30 @@ function handleMusicUpload(event) {
   event.target.value = '';
 }
 
+function toggleBubblePanel(force) {
+  const panel = document.getElementById('bubble-panel');
+  if (!panel) return;
+  const show = typeof force === 'boolean' ? force : panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !show);
+}
+
+function renderBubblePlaylist() {
+  const container = document.getElementById('bubble-playlist');
+  if (!container) return;
+  if (MusicEngine.queue.length === 0) {
+    container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px;text-align:center;">Kosong</p>';
+    return;
+  }
+  container.innerHTML = MusicEngine.queue.map((t, i) => `
+    <div class="playlist-track ${i === MusicEngine.queueIndex ? 'active' : ''}" style="padding:5px 8px;" onclick="MusicEngine.queueIndex=${i};MusicEngine.loadTrack(MusicEngine.queue[${i}]);MusicEngine.play();renderBubblePlaylist();">
+      <span style="font-size:14px;">${i === MusicEngine.queueIndex ? '▶' : '♪'}</span>
+      <div class="track-info">
+        <div class="track-name" style="font-size:12px;">${escapeHtml(t.track_name)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
 function joinMusicRoom() {
   const actor = getCommunityActor();
   if (!actor) { showCommunityLoginOverlay(); return; }
@@ -937,13 +995,19 @@ document.addEventListener('DOMContentLoaded', function() {
   selectChannel('umum');
   loadSettings();
 
-  // Progress bar seek
-  document.querySelector('.music-progress-track')?.addEventListener('click', function(e) {
+  // Nano progress bar seek
+  document.querySelector('.nano-progress-track')?.addEventListener('click', function(e) {
     const rect = this.getBoundingClientRect();
     MusicEngine.seek(((e.clientX - rect.left) / rect.width) * 100);
   });
 
-  // Music file upload handler
+  // Bubble progress bar seek
+  document.querySelector('.bubble-progress-track')?.addEventListener('click', function(e) {
+    const rect = this.getBoundingClientRect();
+    MusicEngine.seek(((e.clientX - rect.left) / rect.width) * 100);
+  });
+
+  // Music file upload handler (legacy modal)
   const fileInput = document.getElementById('music-file-input');
   if (fileInput) fileInput.addEventListener('change', handleMusicUpload);
 

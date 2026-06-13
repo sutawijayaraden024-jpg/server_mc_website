@@ -471,32 +471,64 @@
     </div>
   </div>
 
-  <!-- Music Player Bar -->
-  <div id="music-player-bar" class="music-bar hidden">
-    <div class="music-bar-info">
-      <div class="music-bar-cover">🎵</div>
-      <div class="music-bar-details">
-        <div class="music-bar-title" id="music-title">No Track</div>
-        <div class="music-bar-artist" id="music-artist">-</div>
+  <!-- NANO PLAYER - Thin bar, only shows when music plays -->
+  <div id="nano-player" class="nano-player hidden">
+    <div class="nano-progress-track">
+      <div class="nano-progress-fill" id="nano-progress-fill" style="width:0%"></div>
+    </div>
+    <div class="nano-body">
+      <div class="nano-info">
+        <span class="nano-icon">🎵</span>
+        <span class="nano-title" id="nano-title">No Track</span>
+        <span class="nano-time"><span id="nano-current-time">0:00</span> / <span id="nano-total-time">0:00</span></span>
+      </div>
+      <div class="nano-controls">
+        <button class="nano-btn" onclick="MusicEngine.previous()" title="Prev">⏮</button>
+        <button class="nano-btn nano-play" onclick="MusicEngine.togglePlay()" id="nano-play-btn" title="Play">▶</button>
+        <button class="nano-btn" onclick="MusicEngine.next()" title="Next">⏭</button>
       </div>
     </div>
-    <div class="music-bar-controls">
-      <button class="music-bar-btn" onclick="MusicEngine.toggleShuffle()" title="Shuffle">🔀</button>
-      <button class="music-bar-btn" onclick="MusicEngine.previous()" title="Previous">⏮️</button>
-      <button class="music-bar-btn music-bar-play" onclick="MusicEngine.togglePlay()" title="Play/Pause">▶️</button>
-      <button class="music-bar-btn" onclick="MusicEngine.next()" title="Next">⏭️</button>
-      <button class="music-bar-btn" onclick="MusicEngine.toggleRepeat()" title="Repeat">🔁</button>
-    </div>
-    <div class="music-bar-progress">
-      <span class="music-time" id="music-current-time">0:00</span>
-      <div class="music-progress-track">
-        <div class="music-progress-fill" id="music-progress-fill" style="width:0%"></div>
+  </div>
+
+  <!-- BUBBLE PLAYER - Floating button that expands to full controls -->
+  <div id="bubble-player" class="bubble-player">
+    <button id="bubble-toggle" class="bubble-toggle hidden" onclick="toggleBubblePanel()" title="Music">
+      🎵
+    </button>
+    <div id="bubble-panel" class="bubble-panel hidden">
+      <div class="bubble-header">
+        <span>🎵 Now Playing</span>
+        <button class="bubble-close" onclick="toggleBubblePanel()">✕</button>
       </div>
-      <span class="music-time" id="music-total-time">0:00</span>
-    </div>
-    <div class="music-bar-volume">
-      <button class="music-bar-btn" onclick="toggleMute()" title="Volume">🔊</button>
-      <input type="range" class="music-volume-slider" min="0" max="100" value="70" oninput="MusicEngine.setVolume(this.value)">
+      <div class="bubble-now">
+        <div class="bubble-cover">🎵</div>
+        <div>
+          <div class="bubble-track-title" id="bubble-title">No Track</div>
+          <div class="bubble-track-artist" id="bubble-artist">-</div>
+        </div>
+      </div>
+      <div class="bubble-progress">
+        <span class="nano-time" id="bubble-current-time">0:00</span>
+        <div class="bubble-progress-track">
+          <div class="bubble-progress-fill" id="bubble-progress-fill" style="width:0%"></div>
+        </div>
+        <span class="nano-time" id="bubble-total-time">0:00</span>
+      </div>
+      <div class="bubble-controls">
+        <button class="bctrl" onclick="MusicEngine.toggleShuffle()" id="bubble-shuffle">🔀</button>
+        <button class="bctrl" onclick="MusicEngine.previous()">⏮</button>
+        <button class="bctrl bubble-play-btn" onclick="MusicEngine.togglePlay()" id="bubble-play-btn">▶</button>
+        <button class="bctrl" onclick="MusicEngine.next()">⏭</button>
+        <button class="bctrl" onclick="MusicEngine.toggleRepeat()" id="bubble-repeat">🔁</button>
+      </div>
+      <div class="bubble-volume">
+        <span>🔊</span>
+        <input type="range" min="0" max="100" value="70" class="bubble-vol-slider" oninput="MusicEngine.setVolume(this.value)">
+      </div>
+      <div class="bubble-playlist-label">Queue</div>
+      <div id="bubble-playlist" class="bubble-playlist"></div>
+      <label for="bubble-file-input" class="bubble-upload-btn">📁 Upload Lagu</label>
+      <input type="file" id="bubble-file-input" accept="audio/mpeg,audio/ogg,audio/mp4,audio/wav,audio/flac,audio/x-m4a" style="display:none" onchange="handleMusicUpload(event)">
     </div>
   </div>
 
