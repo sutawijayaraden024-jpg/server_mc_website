@@ -3,8 +3,8 @@ pages_build_output_dir = "./public"
 
 [[kv_namespaces]]
 binding = "SERVER_MC_KV"
-id = "90ca423dc0f34c4b8a633e287795c5a3"
-preview_id = "90ca423dc0f34c4b8a633e287795c5a3"
+id = "004956cda69b49a7ad69d2af336aa7e5"
+preview_id = "004956cda69b49a7ad69d2af336aa7e5"
 
 [vars]
 WEBSITE_URL = "https://server-mc-website.pages.dev"
