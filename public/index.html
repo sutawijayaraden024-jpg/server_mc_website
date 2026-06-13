@@ -8,7 +8,7 @@
   <title>Server_MC - Minecraft Network</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -286,59 +286,100 @@
       </div>
     </div>
 
-    <!-- Komunitas Page -->
+    <!-- Komunitas Page (Telegram-style Chat) -->
     <div id="komunitas" class="page">
-      <div class="container">
-        <h1>Komunitas</h1>
-        <p style="margin-top: 20px; color: var(--gray-muted);">Bergabunglah dengan diskusi komunitas, bagikan tips, dan showcase kreasi Anda.</p>
-        
-        <div class="posts-container" style="margin-top: 40px;">
-          <aside class="posts-sidebar">
-            <div class="stats-box">
-              <div class="stat-item">
-                <div class="stat-icon">👥</div>
-                <div class="stat-info">
-                  <p>Total Member</p>
-                  <p id="total-members">0</p>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon">📝</div>
-                <div class="stat-info">
-                  <p>Total Post</p>
-                  <p id="total-posts">0</p>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon">🟢</div>
-                <div class="stat-info">
-                  <p>Member Aktif</p>
-                  <p id="total-active-members">0</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="category-filter">
-              <h3>Kategori</h3>
-              <button onclick="navigateToCommunityCategory('all'); return false;">Semua Post</button>
-              <button onclick="navigateToCommunityCategory('Diskusi'); return false;">Diskusi</button>
-              <button onclick="navigateToCommunityCategory('Tips & Trik'); return false;">Tips & Trik</button>
-              <button onclick="navigateToCommunityCategory('Showcase'); return false;">Showcase</button>
-              <button onclick="navigateToCommunityCategory('Bantuan'); return false;">Bantuan</button>
-            </div>
-
-            <button class="btn btn-primary" style="width: 100%;" onclick="showCreatePostForm(); return false;">Buat Post Baru</button>
-          </aside>
-
-          <div>
-            <div id="posts-list" class="posts-list">
-              <div class="loading">
-                <div class="spinner"></div>
-                <p>Memuat post...</p>
-              </div>
-            </div>
+      <div class="container container-wide">
+        <div class="community-header">
+          <div class="community-header-text">
+            <p class="community-kanji">コミュニティ</p>
+            <h1>Komunitas</h1>
+            <p class="community-subtitle">Ngobrol dengan sesama member — buat grup atau chat pribadi.</p>
+          </div>
+          <div class="community-stats-mini">
+            <span><strong id="total-members">0</strong> member</span>
+            <span class="stats-divider">·</span>
+            <span><strong id="total-active-members">0</strong> online</span>
+            <span class="stats-divider">·</span>
+            <span><strong id="total-chats">0</strong> chat</span>
           </div>
         </div>
+
+        <div class="telegram-app" id="telegram-app">
+          <aside class="chat-sidebar" id="chat-sidebar">
+            <div class="chat-sidebar-header">
+              <input type="search" id="chat-search" placeholder="Cari chat..." autocomplete="off" oninput="filterChatList()">
+              <div class="chat-sidebar-actions">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="showNewGroupModal(); return false;">+ Grup</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="showNewDmModal(); return false;">+ Chat</button>
+              </div>
+            </div>
+            <div id="chat-list" class="chat-list">
+              <div class="loading chat-loading">
+                <div class="spinner"></div>
+                <p>Memuat chat...</p>
+              </div>
+            </div>
+          </aside>
+
+          <section class="chat-main mobile-hidden" id="chat-main">
+            <div class="chat-empty" id="chat-empty-state">
+              <div class="chat-empty-icon">💬</div>
+              <h3>Pilih percakapan</h3>
+              <p>Buat grup baru atau mulai chat pribadi dengan member lain.</p>
+            </div>
+
+            <div class="chat-active hidden" id="chat-active-panel">
+              <header class="chat-header">
+                <button type="button" class="chat-back-btn" onclick="closeActiveChat(); return false;" aria-label="Kembali">←</button>
+                <div class="chat-header-info">
+                  <div id="chat-active-avatar" class="chat-avatar">👥</div>
+                  <div>
+                    <div id="chat-active-name" class="chat-active-name">Grup</div>
+                    <div id="chat-active-meta" class="chat-meta">0 anggota</div>
+                  </div>
+                </div>
+              </header>
+              <div id="chat-messages" class="chat-messages"></div>
+              <form class="chat-compose" onsubmit="sendCommunityMessage(event)">
+                <input type="text" id="chat-message-input" placeholder="Tulis pesan..." maxlength="2000" autocomplete="off">
+                <button type="submit" class="btn btn-primary chat-send-btn" aria-label="Kirim">➤</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Buat Grup -->
+    <div id="new-group-modal" class="chat-modal hidden" onclick="if(event.target===this) hideNewGroupModal();">
+      <div class="chat-modal-card">
+        <div class="chat-modal-header">
+          <h3>Buat Grup Baru</h3>
+          <button type="button" class="chat-modal-close" onclick="hideNewGroupModal(); return false;">×</button>
+        </div>
+        <form onsubmit="handleCreateGroup(event)">
+          <div class="form-group">
+            <label for="group-name">Nama Grup</label>
+            <input type="text" id="group-name" maxlength="60" placeholder="Contoh: Builder Squad" required>
+          </div>
+          <div class="form-group">
+            <label>Pilih Anggota</label>
+            <div id="group-member-picker" class="member-picker"></div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Buat Grup</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Chat Pribadi -->
+    <div id="new-dm-modal" class="chat-modal hidden" onclick="if(event.target===this) hideNewDmModal();">
+      <div class="chat-modal-card">
+        <div class="chat-modal-header">
+          <h3>Mulai Chat Pribadi</h3>
+          <button type="button" class="chat-modal-close" onclick="hideNewDmModal(); return false;">×</button>
+        </div>
+        <input type="search" id="dm-member-search" placeholder="Cari member..." autocomplete="off" oninput="filterDmMemberList()">
+        <div id="dm-member-list" class="member-picker dm-member-list"></div>
       </div>
     </div>
 

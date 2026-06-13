@@ -1,7 +1,8 @@
 const memoryStore = globalThis.__SERVER_MC_STORE__ || (globalThis.__SERVER_MC_STORE__ = {
   users: [],
   sessions: [],
-  online: []
+  online: [],
+  community: { chats: [], messages: [] }
 });
 
 export const ROLE_SPAWNS = {
@@ -234,4 +235,153 @@ export function findKnownXuid(xuid) {
 export function findUserByXuid(users, xuid) {
   const normalizedXuid = String(xuid || '').trim();
   return users.find(user => String(user.xuid || '').trim() === normalizedXuid) || null;
+}
+
+const DEFAULT_GROUP_ID = 'group_umum';
+
+function createId(prefix) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeEmail(email) {
+  return String(email || '').toLowerCase().trim();
+}
+
+function buildDirectChatId(emailA, emailB) {
+  return `dm_${[normalizeEmail(emailA), normalizeEmail(emailB)].sort().join('_')}`;
+}
+
+function touchChatLastMessage(chat, message) {
+  chat.last_message = {
+    text: message.text,
+    sender_name: message.sender_name,
+    sender_email: message.sender_email,
+    created_at: message.created_at
+  };
+  chat.updated_at = message.created_at;
+}
+
+export function ensureDefaultGroup(state) {
+  if (!state.community) state.community = { chats: [], messages: [] };
+  if (!Array.isArray(state.community.chats)) state.community.chats = [];
+  if (!Array.isArray(state.community.messages)) state.community.messages = [];
+
+  let defaultGroup = state.community.chats.find(chat => chat.id === DEFAULT_GROUP_ID);
+  if (!defaultGroup) {
+    defaultGroup = {
+      id: DEFAULT_GROUP_ID,
+      type: 'group',
+      name: 'Grup Umum',
+      members: [],
+      created_by: 'system',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      avatar: '🏯',
+      last_message: null
+    };
+    state.community.chats.unshift(defaultGroup);
+  }
+  return defaultGroup;
+}
+
+export function getUserChats(state, email) {
+  const normalizedEmail = normalizeEmail(email);
+  ensureDefaultGroup(state);
+
+  const defaultGroup = state.community.chats.find(chat => chat.id === DEFAULT_GROUP_ID);
+  if (defaultGroup && !defaultGroup.members.includes(normalizedEmail)) {
+    defaultGroup.members.push(normalizedEmail);
+  }
+
+  return state.community.chats
+    .filter(chat => Array.isArray(chat.members) && chat.members.includes(normalizedEmail))
+    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+}
+
+export function createGroupChat(state, creatorEmail, creatorName, groupName, memberEmails = []) {
+  const normalizedCreator = normalizeEmail(creatorEmail);
+  const members = new Set([normalizedCreator]);
+  memberEmails.forEach(item => {
+    const email = normalizeEmail(typeof item === 'string' ? item : item.email);
+    if (email) members.add(email);
+  });
+
+  const chat = {
+    id: createId('group'),
+    type: 'group',
+    name: groupName.slice(0, 60),
+    members: Array.from(members),
+    created_by: normalizedCreator,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    avatar: '👥',
+    last_message: null
+  };
+
+  state.community.chats.unshift(chat);
+  return chat;
+}
+
+export function createDirectChat(state, emailA, nameA, emailB, nameB) {
+  const normalizedA = normalizeEmail(emailA);
+  const normalizedB = normalizeEmail(emailB);
+  const chatId = buildDirectChatId(normalizedA, normalizedB);
+
+  let chat = state.community.chats.find(item => item.id === chatId);
+  if (!chat) {
+    chat = {
+      id: chatId,
+      type: 'direct',
+      name: nameB || normalizedB.split('@')[0],
+      members: [normalizedA, normalizedB],
+      member_names: {
+        [normalizedA]: nameA || normalizedA.split('@')[0],
+        [normalizedB]: nameB || normalizedB.split('@')[0]
+      },
+      created_by: normalizedA,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      avatar: '💬',
+      last_message: null
+    };
+    state.community.chats.unshift(chat);
+  }
+  return chat;
+}
+
+export function sendCommunityMessage(state, chatId, senderEmail, senderName, text) {
+  const normalizedEmail = normalizeEmail(senderEmail);
+  const chat = state.community.chats.find(item => item.id === chatId);
+  if (!chat || !Array.isArray(chat.members) || !chat.members.includes(normalizedEmail)) {
+    return null;
+  }
+
+  const message = {
+    id: createId('msg'),
+    chat_id: chatId,
+    sender_email: normalizedEmail,
+    sender_name: senderName || normalizedEmail.split('@')[0],
+    text: text.slice(0, 2000),
+    created_at: new Date().toISOString()
+  };
+
+  state.community.messages.push(message);
+  touchChatLastMessage(chat, message);
+  return message;
+}
+
+export async function loadCommunityState(env) {
+  const stored = await readJsonStorage(env, 'community', memoryStore.community);
+  memoryStore.community = {
+    chats: Array.isArray(stored?.chats) ? stored.chats : [],
+    messages: Array.isArray(stored?.messages) ? stored.messages : []
+  };
+  return { community: memoryStore.community };
+}
+
+export async function saveCommunityState(env, state) {
+  if (state?.community) {
+    memoryStore.community = state.community;
+    await writeJsonStorage(env, 'community', state.community);
+  }
 }

@@ -1,13 +1,18 @@
 let currentUser = null;
 let currentPage = 'home';
 let allPosts = [];
-let filteredCategory = 'all';
+let communityChats = [];
+let communityMessages = [];
+let activeChatId = null;
+let chatPollTimer = null;
+let chatSearchQuery = '';
 
 const STORAGE_KEYS = {
   users: 'servermc_users',
   sessions: 'servermc_sessions',
   online: 'servermc_online',
   posts: 'servermc_posts',
+  community: 'servermc_community',
   font: 'fontSettings',
   apiBase: 'servermc_api_base'
 };
@@ -571,7 +576,12 @@ function navigateTo(page) {
     clearSensitiveFormState(page);
   }
 
-  if (page === 'komunitas') loadPosts();
+  if (page === 'komunitas') {
+    loadCommunityChat();
+    startChatPolling();
+  } else {
+    stopChatPolling();
+  }
   if (page === 'members') loadMembers();
   document.getElementById('user-dropdown')?.classList.remove('active');
   window.scrollTo(0, 0);
@@ -891,6 +901,7 @@ function renderPlayerDataSection() {
   document.getElementById('admin-total-players')?.replaceChildren(document.createTextNode(totalRegistered));
   document.getElementById('admin-active-players')?.replaceChildren(document.createTextNode(totalOnline));
   document.getElementById('admin-total-posts')?.replaceChildren(document.createTextNode(allPosts.length));
+  document.getElementById('total-chats')?.replaceChildren(document.createTextNode(communityChats.length));
 
   const registeredList = document.getElementById('registered-player-list');
   if (registeredList) {
@@ -942,80 +953,458 @@ function loadPosts() {
   }
 
   localStorage.setItem(STORAGE_KEYS.posts, JSON.stringify(allPosts));
-  document.getElementById('total-posts')?.replaceChildren(document.createTextNode(allPosts.length));
-  displayPosts();
 }
 
-function displayPosts() {
-  const postsList = document.getElementById('posts-list');
-  if (!postsList) return;
-  const filteredPosts = filteredCategory === 'all' ? allPosts : allPosts.filter(p => p.category === filteredCategory);
-  postsList.innerHTML = filteredPosts.length
-    ? filteredPosts.map(post => `
-      <div class="post-card">
-        <div class="post-header">
-          <div class="post-avatar">${post.avatar}</div>
-          <div class="post-meta">
-            <div class="post-author">${escapeHtml(post.author_name)}</div>
-            <div class="post-date">${formatDate(post.created_at)}</div>
+const DEFAULT_GROUP_ID = 'group_umum';
+
+function loadLocalCommunityState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.community) || '{}');
+    return {
+      chats: Array.isArray(saved.chats) ? saved.chats : [],
+      messages: Array.isArray(saved.messages) ? saved.messages : []
+    };
+  } catch {
+    return { chats: [], messages: [] };
+  }
+}
+
+function saveLocalCommunityState(state) {
+  localStorage.setItem(STORAGE_KEYS.community, JSON.stringify(state));
+}
+
+function ensureLocalDefaultGroup(state) {
+  let defaultGroup = state.chats.find(chat => chat.id === DEFAULT_GROUP_ID);
+  if (!defaultGroup) {
+    defaultGroup = {
+      id: DEFAULT_GROUP_ID,
+      type: 'group',
+      name: 'Grup Umum',
+      members: [],
+      created_by: 'system',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      avatar: '🏯',
+      last_message: null
+    };
+    state.chats.unshift(defaultGroup);
+  }
+  return defaultGroup;
+}
+
+function buildDirectChatId(emailA, emailB) {
+  return `dm_${[emailA.toLowerCase(), emailB.toLowerCase()].sort().join('_')}`;
+}
+
+function getChatDisplayName(chat) {
+  if (!chat || !currentUser) return 'Chat';
+  if (chat.type === 'direct') {
+    const otherEmail = (chat.members || []).find(email => email !== currentUser.email.toLowerCase());
+    return chat.member_names?.[otherEmail] || otherEmail?.split('@')[0] || chat.name || 'Chat Pribadi';
+  }
+  return chat.name || 'Grup';
+}
+
+function getChatAvatar(chat) {
+  if (chat?.avatar) return chat.avatar;
+  return chat?.type === 'direct' ? '💬' : '👥';
+}
+
+function getUserCommunityChats(state, email) {
+  const normalizedEmail = email.toLowerCase();
+  ensureLocalDefaultGroup(state);
+  const defaultGroup = state.chats.find(chat => chat.id === DEFAULT_GROUP_ID);
+  if (defaultGroup && !defaultGroup.members.includes(normalizedEmail)) {
+    defaultGroup.members.push(normalizedEmail);
+  }
+  return state.chats
+    .filter(chat => Array.isArray(chat.members) && chat.members.includes(normalizedEmail))
+    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+}
+
+async function fetchCommunityFromApi() {
+  if (!hasApiBridge() || !currentUser) return null;
+  const email = encodeURIComponent(currentUser.email);
+  const data = await apiRequest(`/api/community/chats?email=${email}`, { method: 'GET' });
+  if (Array.isArray(data?.chats)) communityChats = data.chats;
+  if (Array.isArray(data?.messages)) communityMessages = data.messages;
+  return data;
+}
+
+async function loadCommunityChat() {
+  if (!currentUser) return;
+
+  try {
+    if (hasApiBridge()) {
+      await fetchCommunityFromApi();
+    } else {
+      const state = loadLocalCommunityState();
+      communityChats = getUserCommunityChats(state, currentUser.email);
+      const allowedIds = new Set(communityChats.map(chat => chat.id));
+      communityMessages = state.messages.filter(message => allowedIds.has(message.chat_id));
+      saveLocalCommunityState(state);
+    }
+  } catch {
+    const state = loadLocalCommunityState();
+    communityChats = getUserCommunityChats(state, currentUser.email);
+    communityMessages = state.messages;
+  }
+
+  document.getElementById('total-chats')?.replaceChildren(document.createTextNode(communityChats.length));
+  renderChatList();
+
+  if (activeChatId && communityChats.some(chat => chat.id === activeChatId)) {
+    renderActiveChat();
+  } else {
+    closeActiveChat();
+  }
+}
+
+function startChatPolling() {
+  stopChatPolling();
+  chatPollTimer = setInterval(() => {
+    if (currentPage === 'komunitas' && currentUser) {
+      loadCommunityChat();
+    }
+  }, 4000);
+}
+
+function stopChatPolling() {
+  if (chatPollTimer) {
+    clearInterval(chatPollTimer);
+    chatPollTimer = null;
+  }
+}
+
+function filterChatList() {
+  chatSearchQuery = document.getElementById('chat-search')?.value.trim().toLowerCase() || '';
+  renderChatList();
+}
+
+function renderChatList() {
+  const chatList = document.getElementById('chat-list');
+  if (!chatList) return;
+
+  const filtered = communityChats.filter(chat => {
+    if (!chatSearchQuery) return true;
+    const name = getChatDisplayName(chat).toLowerCase();
+    const preview = (chat.last_message?.text || '').toLowerCase();
+    return name.includes(chatSearchQuery) || preview.includes(chatSearchQuery);
+  });
+
+  chatList.innerHTML = filtered.length
+    ? filtered.map(chat => {
+        const isActive = chat.id === activeChatId;
+        const preview = chat.last_message
+          ? `${chat.last_message.sender_name === currentUser?.name ? 'Anda: ' : ''}${chat.last_message.text}`
+          : 'Belum ada pesan';
+        const time = chat.last_message?.created_at
+          ? formatChatTime(chat.last_message.created_at)
+          : formatChatTime(chat.created_at);
+        return `
+          <div class="chat-list-item${isActive ? ' active' : ''}" onclick="openChat(${JSON.stringify(chat.id)}); return false;">
+            <div class="chat-avatar">${getChatAvatar(chat)}</div>
+            <div class="chat-list-body">
+              <div class="chat-list-name">
+                ${escapeHtml(getChatDisplayName(chat))}
+                ${chat.type === 'group' && chat.id !== DEFAULT_GROUP_ID ? '<span class="chat-type-badge">Grup</span>' : ''}
+              </div>
+              <div class="chat-list-preview">${escapeHtml(preview)}</div>
+            </div>
+            <div class="chat-list-time">${escapeHtml(time)}</div>
           </div>
-        </div>
-        <div class="post-title">${escapeHtml(post.title)}</div>
-        <div class="post-content">${escapeHtml(post.content)}</div>
-        <div class="post-tags">
-          <span class="tag">${escapeHtml(post.category)}</span>
-          ${(post.tags || []).map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')}
-        </div>
-        <div class="post-stats">
-          <div class="post-stat"><button onclick="likePost(${post.id}); return false;">❤️</button><span>${post.likes} Suka</span></div>
-          <div class="post-stat"><button onclick="replyPost(${post.id}); return false;">💬</button><span>${post.replies} Balasan</span></div>
-          <div class="post-stat"><button onclick="viewPost(${post.id}); return false;">👁️</button><span>${post.views} Dilihat</span></div>
-        </div>
-      </div>
-    `).join('')
-    : '<p class="text-center" style="color: var(--gray-muted); padding: 40px;">Tidak ada post ditemukan</p>';
+        `;
+      }).join('')
+    : '<p class="text-center" style="color: var(--gray-muted); padding: 30px 12px;">Belum ada chat. Buat grup atau mulai chat pribadi.</p>';
 }
 
-function navigateToCommunityCategory(category) {
-  filteredCategory = category;
-  navigateTo('komunitas');
-  displayPosts();
+function openChat(chatId) {
+  activeChatId = chatId;
+  document.getElementById('chat-empty-state')?.classList.add('hidden');
+  document.getElementById('chat-active-panel')?.classList.remove('hidden');
+  document.getElementById('chat-sidebar')?.classList.add('mobile-hidden');
+  document.getElementById('chat-main')?.classList.remove('mobile-hidden');
+  renderChatList();
+  renderActiveChat();
+  setTimeout(() => document.getElementById('chat-message-input')?.focus(), 100);
 }
 
-function likePost(postId) {
-  if (!currentUser) return navigateTo('login');
-  const post = allPosts.find(p => p.id === postId);
-  if (post) {
-    post.likes += 1;
-    localStorage.setItem(STORAGE_KEYS.posts, JSON.stringify(allPosts));
-    displayPosts();
+function closeActiveChat() {
+  activeChatId = null;
+  document.getElementById('chat-empty-state')?.classList.remove('hidden');
+  document.getElementById('chat-active-panel')?.classList.add('hidden');
+  document.getElementById('chat-sidebar')?.classList.remove('mobile-hidden');
+  document.getElementById('chat-main')?.classList.add('mobile-hidden');
+  renderChatList();
+}
+
+function renderActiveChat() {
+  const chat = communityChats.find(item => item.id === activeChatId);
+  if (!chat) return;
+
+  document.getElementById('chat-active-avatar')?.replaceChildren(document.createTextNode(getChatAvatar(chat)));
+  document.getElementById('chat-active-name')?.replaceChildren(document.createTextNode(getChatDisplayName(chat)));
+
+  const meta = chat.type === 'direct'
+    ? 'Chat pribadi'
+    : `${(chat.members || []).length} anggota`;
+  document.getElementById('chat-active-meta')?.replaceChildren(document.createTextNode(meta));
+
+  const messagesEl = document.getElementById('chat-messages');
+  if (!messagesEl) return;
+
+  const messages = communityMessages
+    .filter(message => message.chat_id === activeChatId)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  let lastDateLabel = '';
+  messagesEl.innerHTML = messages.length
+    ? messages.map(message => {
+        const dateLabel = formatDate(message.created_at);
+        let divider = '';
+        if (dateLabel !== lastDateLabel) {
+          lastDateLabel = dateLabel;
+          divider = `<div class="chat-date-divider">${escapeHtml(dateLabel)}</div>`;
+        }
+        const isOwn = message.sender_email === currentUser.email.toLowerCase();
+        return `
+          ${divider}
+          <div class="chat-bubble-row ${isOwn ? 'own' : 'other'}">
+            <div class="chat-bubble">
+              ${!isOwn && chat.type === 'group' ? `<div class="chat-bubble-sender">${escapeHtml(message.sender_name)}</div>` : ''}
+              <div>${escapeHtml(message.text)}</div>
+              <div class="chat-bubble-time">${escapeHtml(formatChatTime(message.created_at))}</div>
+            </div>
+          </div>
+        `;
+      }).join('')
+    : '<p class="text-center" style="color: var(--gray-muted); margin: auto;">Belum ada pesan. Mulai percakapan!</p>';
+
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function sendCommunityMessage(event) {
+  event.preventDefault();
+  if (!currentUser || !activeChatId) return;
+
+  const input = document.getElementById('chat-message-input');
+  const text = input?.value.trim();
+  if (!text) return;
+
+  try {
+    if (hasApiBridge()) {
+      const data = await apiRequest('/api/community/messages', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: currentUser.email,
+          chat_id: activeChatId,
+          sender_name: currentUser.name,
+          text
+        })
+      });
+      if (data?.message) communityMessages.push(data.message);
+      if (Array.isArray(data?.chats)) communityChats = data.chats;
+    } else {
+      const state = loadLocalCommunityState();
+      const chat = state.chats.find(item => item.id === activeChatId);
+      if (!chat || !chat.members.includes(currentUser.email.toLowerCase())) return;
+
+      const message = {
+        id: `msg_${Date.now()}`,
+        chat_id: activeChatId,
+        sender_email: currentUser.email.toLowerCase(),
+        sender_name: currentUser.name,
+        text: text.slice(0, 2000),
+        created_at: new Date().toISOString()
+      };
+      state.messages.push(message);
+      chat.last_message = {
+        text: message.text,
+        sender_name: message.sender_name,
+        sender_email: message.sender_email,
+        created_at: message.created_at
+      };
+      chat.updated_at = message.created_at;
+      saveLocalCommunityState(state);
+      communityMessages.push(message);
+      communityChats = getUserCommunityChats(state, currentUser.email);
+    }
+
+    input.value = '';
+    renderChatList();
+    renderActiveChat();
+    document.getElementById('total-chats')?.replaceChildren(document.createTextNode(communityChats.length));
+  } catch (error) {
+    showToast(error.message || 'Gagal mengirim pesan.');
   }
 }
 
-function replyPost(postId) {
+function showNewGroupModal() {
   if (!currentUser) return navigateTo('login');
-  const post = allPosts.find(p => p.id === postId);
-  if (post) {
-    post.replies += 1;
-    localStorage.setItem(STORAGE_KEYS.posts, JSON.stringify(allPosts));
-    displayPosts();
-    showToast('Balasan tercatat.');
+  const picker = document.getElementById('group-member-picker');
+  if (picker) {
+    const others = registeredUsers.filter(user => user.email.toLowerCase() !== currentUser.email.toLowerCase());
+    picker.innerHTML = others.length
+      ? others.map(user => `
+          <label class="member-picker-item">
+            <input type="checkbox" name="group-member" value="${escapeHtml(user.email)}">
+            <span>${escapeHtml(user.name)} · ${escapeHtml(user.email)}</span>
+          </label>
+        `).join('')
+      : '<p style="padding: 10px; color: var(--gray-muted);">Belum ada member lain.</p>';
+  }
+  document.getElementById('group-name').value = '';
+  document.getElementById('new-group-modal')?.classList.remove('hidden');
+}
+
+function hideNewGroupModal() {
+  document.getElementById('new-group-modal')?.classList.add('hidden');
+}
+
+function showNewDmModal() {
+  if (!currentUser) return navigateTo('login');
+  renderDmMemberList();
+  document.getElementById('dm-member-search').value = '';
+  document.getElementById('new-dm-modal')?.classList.remove('hidden');
+}
+
+function hideNewDmModal() {
+  document.getElementById('new-dm-modal')?.classList.add('hidden');
+}
+
+function filterDmMemberList() {
+  renderDmMemberList();
+}
+
+function renderDmMemberList() {
+  const list = document.getElementById('dm-member-list');
+  if (!list || !currentUser) return;
+
+  const query = document.getElementById('dm-member-search')?.value.trim().toLowerCase() || '';
+  const others = registeredUsers.filter(user => {
+    if (user.email.toLowerCase() === currentUser.email.toLowerCase()) return false;
+    if (!query) return true;
+    return user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+  });
+
+  list.innerHTML = others.length
+    ? others.map(user => `
+        <button type="button" class="member-picker-item clickable-dm" onclick="startDirectChat(${JSON.stringify(user.email)}, ${JSON.stringify(user.name)}); return false;">
+          <div class="chat-avatar" style="width:36px;height:36px;font-size:16px;">💬</div>
+          <div>
+            <div style="font-weight:600;">${escapeHtml(user.name)}</div>
+            <div style="font-size:12px;color:var(--gray-muted);">${escapeHtml(user.email)}</div>
+          </div>
+        </button>
+      `).join('')
+    : '<p style="padding: 10px; color: var(--gray-muted);">Member tidak ditemukan.</p>';
+}
+
+async function handleCreateGroup(event) {
+  event.preventDefault();
+  if (!currentUser) return;
+
+  const groupName = document.getElementById('group-name')?.value.trim();
+  const selected = Array.from(document.querySelectorAll('input[name="group-member"]:checked')).map(el => el.value);
+  if (!groupName) return;
+
+  try {
+    if (hasApiBridge()) {
+      const data = await apiRequest('/api/community/chats', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: currentUser.email,
+          name: currentUser.name,
+          type: 'group',
+          group_name: groupName,
+          members: selected
+        })
+      });
+      if (Array.isArray(data?.chats)) communityChats = data.chats;
+      if (data?.chat) openChat(data.chat.id);
+    } else {
+      const state = loadLocalCommunityState();
+      const members = new Set([currentUser.email.toLowerCase(), ...selected.map(email => email.toLowerCase())]);
+      const chat = {
+        id: `group_${Date.now()}`,
+        type: 'group',
+        name: groupName,
+        members: Array.from(members),
+        created_by: currentUser.email.toLowerCase(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        avatar: '👥',
+        last_message: null
+      };
+      state.chats.unshift(chat);
+      saveLocalCommunityState(state);
+      communityChats = getUserCommunityChats(state, currentUser.email);
+      openChat(chat.id);
+    }
+
+    hideNewGroupModal();
+    renderChatList();
+    showToast('Grup berhasil dibuat.');
+  } catch (error) {
+    showToast(error.message || 'Gagal membuat grup.');
   }
 }
 
-function viewPost(postId) {
-  const post = allPosts.find(p => p.id === postId);
-  if (post) {
-    post.views += 1;
-    localStorage.setItem(STORAGE_KEYS.posts, JSON.stringify(allPosts));
-    displayPosts();
+async function startDirectChat(targetEmail, targetName) {
+  if (!currentUser) return;
+
+  try {
+    if (hasApiBridge()) {
+      const data = await apiRequest('/api/community/chats', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: currentUser.email,
+          name: currentUser.name,
+          type: 'direct',
+          target_email: targetEmail,
+          target_name: targetName
+        })
+      });
+      if (Array.isArray(data?.chats)) communityChats = data.chats;
+      await fetchCommunityFromApi();
+      openChat(data.chat.id);
+    } else {
+      const state = loadLocalCommunityState();
+      const chatId = buildDirectChatId(currentUser.email, targetEmail);
+      let chat = state.chats.find(item => item.id === chatId);
+      if (!chat) {
+        chat = {
+          id: chatId,
+          type: 'direct',
+          name: targetName,
+          members: [currentUser.email.toLowerCase(), targetEmail.toLowerCase()],
+          member_names: {
+            [currentUser.email.toLowerCase()]: currentUser.name,
+            [targetEmail.toLowerCase()]: targetName
+          },
+          created_by: currentUser.email.toLowerCase(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          avatar: '💬',
+          last_message: null
+        };
+        state.chats.unshift(chat);
+        saveLocalCommunityState(state);
+      }
+      communityChats = getUserCommunityChats(state, currentUser.email);
+      openChat(chat.id);
+    }
+
+    hideNewDmModal();
+    showToast('Chat pribadi dibuka.');
+  } catch (error) {
+    showToast(error.message || 'Gagal memulai chat.');
   }
 }
 
-function showCreatePostForm() {
-  if (!currentUser) return navigateTo('login');
-  if (currentUser.role !== 'admin') return alert('Hanya admin yang dapat membuat post');
-  navigateTo('admin');
+function formatChatTime(date) {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 }
 
 function handleCreatePost(event) {
@@ -1059,7 +1448,6 @@ function handleCreatePost(event) {
   document.getElementById('post-content').value = '';
   document.getElementById('post-tags').value = '';
   renderPlayerDataSection();
-  displayPosts();
   setTimeout(() => navigateTo('komunitas'), 900);
 }
 
