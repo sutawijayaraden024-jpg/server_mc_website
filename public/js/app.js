@@ -1,4 +1,5 @@
 let currentUser = null;
+let communityUser = null;
 let currentPage = 'home';
 let allPosts = [];
 let communityChats = [];
@@ -6,6 +7,8 @@ let communityMessages = [];
 let activeChatId = null;
 let chatPollTimer = null;
 let chatSearchQuery = '';
+let profileViewEmail = null;
+let communityOverlayOpen = false;
 
 const STORAGE_KEYS = {
   users: 'servermc_users',
@@ -13,8 +16,14 @@ const STORAGE_KEYS = {
   online: 'servermc_online',
   posts: 'servermc_posts',
   community: 'servermc_community',
+  communityProfiles: 'servermc_community_profiles',
   font: 'fontSettings',
   apiBase: 'servermc_api_base'
+};
+
+const COMMUNITY_STORAGE_KEYS = {
+  user: 'servermc_community_user',
+  token: 'servermc_community_token'
 };
 
 const ADMIN_ACCOUNTS = [
@@ -43,14 +52,23 @@ let verificationCodes = loadVerificationCodes();
 
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
+  checkCommunityAuth();
   clearSensitiveFormState();
   loadFontSettings();
   syncBackendState().finally(() => {
     loadPosts();
     renderPlayerDataSection();
+    if (document.getElementById('settings-content')) {
+      initCommunitySettingsPage();
+    }
   });
   toggleScrollButton();
+  updateCommunityFabVisibility();
   window.addEventListener('scroll', toggleScrollButton);
+
+  if (document.getElementById('settings-content')) {
+    return;
+  }
 
   if (currentUser) {
     markOnline(currentUser);
@@ -60,7 +78,264 @@ document.addEventListener('DOMContentLoaded', () => {
     navigateTo('home');
     showAuthOverlay();
   }
+
+  if (window.location.hash === '#community') {
+    openCommunityOverlay();
+  }
 });
+
+function getCommunityActor() {
+  return communityUser;
+}
+
+function checkCommunityAuth() {
+  const userData = localStorage.getItem(COMMUNITY_STORAGE_KEYS.user);
+  const token = localStorage.getItem(COMMUNITY_STORAGE_KEYS.token);
+  if (!userData || !token) {
+    communityUser = null;
+    updateCommunityAuthUI();
+    return;
+  }
+  try {
+    communityUser = normalizeUser(JSON.parse(userData));
+    updateCommunityAuthUI();
+  } catch {
+    communityUser = null;
+    localStorage.removeItem(COMMUNITY_STORAGE_KEYS.user);
+    localStorage.removeItem(COMMUNITY_STORAGE_KEYS.token);
+    updateCommunityAuthUI();
+  }
+}
+
+function persistCommunityUser(user, token = null) {
+  communityUser = normalizeUser(user);
+  const sessionToken = token || createToken();
+  localStorage.setItem(COMMUNITY_STORAGE_KEYS.user, JSON.stringify(communityUser));
+  localStorage.setItem(COMMUNITY_STORAGE_KEYS.token, sessionToken);
+  updateCommunityAuthUI();
+  return sessionToken;
+}
+
+function updateCommunityAuthUI() {
+  const label = document.getElementById('community-user-label');
+  if (label) {
+    label.textContent = communityUser?.name || 'Guest';
+  }
+  updateCommunityFabVisibility();
+}
+
+function updateCommunityFabVisibility() {
+  const fabWrap = document.getElementById('community-fab-wrap');
+  if (!fabWrap) return;
+  fabWrap.style.display = communityOverlayOpen ? 'none' : '';
+}
+
+function showCommunityLoginOverlay() {
+  const overlay = document.getElementById('community-login-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  const emailInput = document.getElementById('community-login-email');
+  if (emailInput && currentUser?.email && !emailInput.value) {
+    emailInput.value = currentUser.email;
+  }
+}
+
+function hideCommunityLoginOverlay() {
+  document.getElementById('community-login-overlay')?.classList.add('hidden');
+  document.getElementById('community-login-error')?.classList.add('hidden');
+}
+
+async function handleCommunityLogin(event) {
+  event.preventDefault();
+  const email = document.getElementById('community-login-email')?.value.trim().toLowerCase();
+  const password = document.getElementById('community-login-password')?.value || '';
+  const errorDiv = document.getElementById('community-login-error');
+  errorDiv?.classList.add('hidden');
+
+  if (!email || !password) {
+    if (errorDiv) {
+      errorDiv.textContent = 'Email dan password harus diisi.';
+      errorDiv.classList.remove('hidden');
+    }
+    return;
+  }
+
+  try {
+    if (isRemoteAuthAvailable()) {
+      const result = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+      const localUser = saveRegisteredUser({
+        name: result.username || email.split('@')[0],
+        email,
+        role: resolveRole(email),
+        password: '',
+        xuid: result.xuid || '',
+        minecraft_name: result.username || ''
+      });
+      persistCommunityUser(localUser, result.token || null);
+    } else {
+      const user = registeredUsers.find(u => (u.email || '').toLowerCase() === email);
+      if (!user) {
+        throw new Error('Akun tidak ditemukan. Daftar di website terlebih dahulu.');
+      }
+      const adminAccount = getAdminAccount(email);
+      if (adminAccount) {
+        persistCommunityUser({ ...user, ...adminAccount });
+      } else if (user.password && user.password !== password) {
+        throw new Error('Password salah.');
+      } else {
+        persistCommunityUser(user);
+      }
+    }
+
+    hideCommunityLoginOverlay();
+    showToast('Login komunitas berhasil.');
+    if (typeof initCommunitySettingsPage === 'function' && document.getElementById('settings-content')) {
+      initCommunitySettingsPage();
+    }
+    if (communityOverlayOpen || window.location.hash === '#community') {
+      openCommunityOverlay(true);
+    }
+  } catch (error) {
+    if (errorDiv) {
+      errorDiv.textContent = error.message || 'Login komunitas gagal.';
+      errorDiv.classList.remove('hidden');
+    }
+  }
+}
+
+function logoutCommunity(redirectHome = false) {
+  localStorage.removeItem(COMMUNITY_STORAGE_KEYS.user);
+  localStorage.removeItem(COMMUNITY_STORAGE_KEYS.token);
+  communityUser = null;
+  stopChatPolling();
+  closeCommunityOverlay();
+  updateCommunityAuthUI();
+  showToast('Logout komunitas berhasil.');
+  if (redirectHome) {
+    window.location.href = 'index.html';
+  } else if (typeof initCommunitySettingsPage === 'function') {
+    initCommunitySettingsPage();
+  }
+}
+
+function openCommunityOverlay(skipLoginCheck = false) {
+  if (!skipLoginCheck && !communityUser) {
+    showCommunityLoginOverlay();
+    return;
+  }
+  const overlay = document.getElementById('community-overlay');
+  if (!overlay) {
+    navigateTo('komunitas');
+    return;
+  }
+  overlay.classList.remove('hidden');
+  communityOverlayOpen = true;
+  document.body.classList.add('community-overlay-open');
+  toggleCommunityFabMenu(false);
+  updateCommunityFabVisibility();
+  loadCommunityChat();
+  startChatPolling();
+  updateCommunityAuthUI();
+}
+
+function closeCommunityOverlay() {
+  document.getElementById('community-overlay')?.classList.add('hidden');
+  communityOverlayOpen = false;
+  document.body.classList.remove('community-overlay-open');
+  stopChatPolling();
+  updateCommunityFabVisibility();
+}
+
+function openCommunitySettings() {
+  if (!communityUser) {
+    showCommunityLoginOverlay();
+    return;
+  }
+  window.location.href = 'community-settings.html';
+}
+
+function toggleCommunityFabMenu(forceState) {
+  const menu = document.getElementById('community-fab-menu');
+  if (!menu) return;
+  const shouldShow = typeof forceState === 'boolean' ? forceState : menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !shouldShow);
+}
+
+function loadCommunityProfiles() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.communityProfiles) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveCommunityProfiles(profiles) {
+  localStorage.setItem(STORAGE_KEYS.communityProfiles, JSON.stringify(profiles));
+}
+
+function getCommunityProfile(email) {
+  const profiles = loadCommunityProfiles();
+  return profiles[String(email || '').toLowerCase()] || {};
+}
+
+function getCommunityDisplayName(user) {
+  if (!user) return 'Member';
+  const profile = getCommunityProfile(user.email);
+  return profile.displayName || user.name;
+}
+
+function saveCommunitySettings() {
+  if (!communityUser) {
+    showCommunityLoginOverlay();
+    return;
+  }
+  const profiles = loadCommunityProfiles();
+  const email = communityUser.email.toLowerCase();
+  profiles[email] = {
+    displayName: document.getElementById('settings-display-name')?.value.trim().slice(0, 40) || communityUser.name,
+    bio: document.getElementById('settings-bio')?.value.trim().slice(0, 160) || ''
+  };
+  saveCommunityProfiles(profiles);
+  showToast('Pengaturan komunitas disimpan.');
+}
+
+function initCommunitySettingsPage() {
+  checkCommunityAuth();
+  const guest = document.getElementById('settings-guest');
+  const content = document.getElementById('settings-content');
+  if (!guest || !content) return;
+
+  if (!communityUser) {
+    guest.classList.remove('hidden');
+    content.classList.add('hidden');
+    showCommunityLoginOverlay();
+    return;
+  }
+
+  guest.classList.add('hidden');
+  content.classList.remove('hidden');
+  hideCommunityLoginOverlay();
+
+  const profile = getCommunityProfile(communityUser.email);
+  const isOnline = onlinePlayers.some(p => p.email === communityUser.email);
+
+  document.getElementById('settings-name')?.replaceChildren(document.createTextNode(communityUser.name));
+  document.getElementById('settings-email')?.replaceChildren(document.createTextNode(communityUser.email));
+  document.getElementById('settings-role')?.replaceChildren(document.createTextNode(communityUser.role === 'admin' ? 'Admin' : 'Member'));
+  document.getElementById('settings-status')?.replaceChildren(document.createTextNode(isOnline ? 'Online' : 'Offline'));
+
+  const displayNameInput = document.getElementById('settings-display-name');
+  const bioInput = document.getElementById('settings-bio');
+  if (displayNameInput) displayNameInput.value = profile.displayName || communityUser.name;
+  if (bioInput) bioInput.value = profile.bio || '';
+}
+
+function isUserOnline(email) {
+  return onlinePlayers.some(player => player.email.toLowerCase() === String(email || '').toLowerCase());
+}
 
 function initializeAccountStore() {
   if (!isRemoteAuthAvailable() && !localStorage.getItem(STORAGE_KEYS.users) && !localStorage.getItem('registeredUsers')) {
@@ -556,9 +831,19 @@ function toggleUserMenu() {
   document.getElementById('user-dropdown')?.classList.toggle('active');
 }
 
-const authRestrictedPages = ['server', 'update', 'event', 'komunitas', 'members', 'admin'];
+const authRestrictedPages = ['server', 'update', 'event', 'members', 'admin'];
 
 function navigateTo(page) {
+  if (page === 'komunitas') {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('komunitas')?.classList.add('active');
+    currentPage = 'komunitas';
+    hideAuthOverlay();
+    openCommunityOverlay();
+    window.scrollTo(0, 0);
+    return;
+  }
+
   if (authRestrictedPages.includes(page) && !currentUser) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('home')?.classList.add('active');
@@ -576,12 +861,7 @@ function navigateTo(page) {
     clearSensitiveFormState(page);
   }
 
-  if (page === 'komunitas') {
-    loadCommunityChat();
-    startChatPolling();
-  } else {
-    stopChatPolling();
-  }
+  stopChatPolling();
   if (page === 'members') loadMembers();
   document.getElementById('user-dropdown')?.classList.remove('active');
   window.scrollTo(0, 0);
@@ -997,10 +1277,12 @@ function buildDirectChatId(emailA, emailB) {
 }
 
 function getChatDisplayName(chat) {
-  if (!chat || !currentUser) return 'Chat';
+  const actor = getCommunityActor();
+  if (!chat || !actor) return 'Chat';
   if (chat.type === 'direct') {
-    const otherEmail = (chat.members || []).find(email => email !== currentUser.email.toLowerCase());
-    return chat.member_names?.[otherEmail] || otherEmail?.split('@')[0] || chat.name || 'Chat Pribadi';
+    const otherEmail = (chat.members || []).find(email => email !== actor.email.toLowerCase());
+    const otherUser = registeredUsers.find(u => u.email.toLowerCase() === otherEmail);
+    return getCommunityDisplayName(otherUser || { name: chat.member_names?.[otherEmail] || otherEmail?.split('@')[0], email: otherEmail });
   }
   return chat.name || 'Grup';
 }
@@ -1023,8 +1305,9 @@ function getUserCommunityChats(state, email) {
 }
 
 async function fetchCommunityFromApi() {
-  if (!hasApiBridge() || !currentUser) return null;
-  const email = encodeURIComponent(currentUser.email);
+  const actor = getCommunityActor();
+  if (!hasApiBridge() || !actor) return null;
+  const email = encodeURIComponent(actor.email);
   const data = await apiRequest(`/api/community/chats?email=${email}`, { method: 'GET' });
   if (Array.isArray(data?.chats)) communityChats = data.chats;
   if (Array.isArray(data?.messages)) communityMessages = data.messages;
@@ -1032,26 +1315,28 @@ async function fetchCommunityFromApi() {
 }
 
 async function loadCommunityChat() {
-  if (!currentUser) return;
+  const actor = getCommunityActor();
+  if (!actor) return;
 
   try {
     if (hasApiBridge()) {
       await fetchCommunityFromApi();
     } else {
       const state = loadLocalCommunityState();
-      communityChats = getUserCommunityChats(state, currentUser.email);
+      communityChats = getUserCommunityChats(state, actor.email);
       const allowedIds = new Set(communityChats.map(chat => chat.id));
       communityMessages = state.messages.filter(message => allowedIds.has(message.chat_id));
       saveLocalCommunityState(state);
     }
   } catch {
     const state = loadLocalCommunityState();
-    communityChats = getUserCommunityChats(state, currentUser.email);
+    communityChats = getUserCommunityChats(state, actor.email);
     communityMessages = state.messages;
   }
 
   document.getElementById('total-chats')?.replaceChildren(document.createTextNode(communityChats.length));
   renderChatList();
+  renderChatSearchResults();
 
   if (activeChatId && communityChats.some(chat => chat.id === activeChatId)) {
     renderActiveChat();
@@ -1063,10 +1348,10 @@ async function loadCommunityChat() {
 function startChatPolling() {
   stopChatPolling();
   chatPollTimer = setInterval(() => {
-    if (currentPage === 'komunitas' && currentUser) {
+    if ((communityOverlayOpen || currentPage === 'komunitas') && getCommunityActor()) {
       loadCommunityChat();
     }
-  }, 4000);
+  }, 2000);
 }
 
 function stopChatPolling() {
@@ -1079,11 +1364,61 @@ function stopChatPolling() {
 function filterChatList() {
   chatSearchQuery = document.getElementById('chat-search')?.value.trim().toLowerCase() || '';
   renderChatList();
+  renderChatSearchResults();
+}
+
+function renderChatSearchResults() {
+  const container = document.getElementById('chat-search-results');
+  const actor = getCommunityActor();
+  if (!container) return;
+
+  if (!chatSearchQuery || !actor) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const matchingMembers = registeredUsers.filter(user => {
+    if (user.email.toLowerCase() === actor.email.toLowerCase()) return false;
+    const name = user.name.toLowerCase();
+    const email = user.email.toLowerCase();
+    const displayName = getCommunityDisplayName(user).toLowerCase();
+    return name.includes(chatSearchQuery) || email.includes(chatSearchQuery) || displayName.includes(chatSearchQuery);
+  }).slice(0, 8);
+
+  if (!matchingMembers.length) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="chat-search-results-label">Member ditemukan</div>
+    ${matchingMembers.map(user => `
+      <button type="button" class="chat-search-result-item" onclick="handleSearchMemberSelect(${JSON.stringify(user.email)}, ${JSON.stringify(user.name)}); return false;">
+        <div class="chat-avatar" style="width:36px;height:36px;font-size:16px;">👤</div>
+        <div>
+          <div class="chat-search-result-name">${escapeHtml(getCommunityDisplayName(user))}</div>
+          <div class="chat-search-result-email">${escapeHtml(user.email)}${isUserOnline(user.email) ? ' <span class="online-dot"></span>' : ''}</div>
+        </div>
+      </button>
+    `).join('')}
+  `;
+}
+
+function handleSearchMemberSelect(email, name) {
+  document.getElementById('chat-search').value = '';
+  chatSearchQuery = '';
+  renderChatSearchResults();
+  renderChatList();
+  startDirectChat(email, name);
 }
 
 function renderChatList() {
   const chatList = document.getElementById('chat-list');
-  if (!chatList) return;
+  const actor = getCommunityActor();
+  if (!chatList || !actor) return;
 
   const filtered = communityChats.filter(chat => {
     if (!chatSearchQuery) return true;
@@ -1096,7 +1431,7 @@ function renderChatList() {
     ? filtered.map(chat => {
         const isActive = chat.id === activeChatId;
         const preview = chat.last_message
-          ? `${chat.last_message.sender_name === currentUser?.name ? 'Anda: ' : ''}${chat.last_message.text}`
+          ? `${chat.last_message.sender_name === actor.name ? 'Anda: ' : ''}${chat.last_message.text}`
           : 'Belum ada pesan';
         const time = chat.last_message?.created_at
           ? formatChatTime(chat.last_message.created_at)
@@ -1140,14 +1475,17 @@ function closeActiveChat() {
 
 function renderActiveChat() {
   const chat = communityChats.find(item => item.id === activeChatId);
-  if (!chat) return;
+  const actor = getCommunityActor();
+  if (!chat || !actor) return;
 
   document.getElementById('chat-active-avatar')?.replaceChildren(document.createTextNode(getChatAvatar(chat)));
   document.getElementById('chat-active-name')?.replaceChildren(document.createTextNode(getChatDisplayName(chat)));
 
-  const meta = chat.type === 'direct'
-    ? 'Chat pribadi'
-    : `${(chat.members || []).length} anggota`;
+  let meta = chat.type === 'direct' ? 'Chat pribadi' : `${(chat.members || []).length} anggota`;
+  if (chat.type === 'direct') {
+    const otherEmail = (chat.members || []).find(email => email !== actor.email.toLowerCase());
+    meta = isUserOnline(otherEmail) ? 'Online' : 'Offline';
+  }
   document.getElementById('chat-active-meta')?.replaceChildren(document.createTextNode(meta));
 
   const messagesEl = document.getElementById('chat-messages');
@@ -1166,12 +1504,15 @@ function renderActiveChat() {
           lastDateLabel = dateLabel;
           divider = `<div class="chat-date-divider">${escapeHtml(dateLabel)}</div>`;
         }
-        const isOwn = message.sender_email === currentUser.email.toLowerCase();
+        const isOwn = message.sender_email === actor.email.toLowerCase();
+        const senderLabel = !isOwn && chat.type === 'group'
+          ? `<button type="button" class="chat-bubble-sender" onclick="showUserProfile(${JSON.stringify(message.sender_email)}); return false;">${escapeHtml(message.sender_name)}</button>`
+          : '';
         return `
           ${divider}
           <div class="chat-bubble-row ${isOwn ? 'own' : 'other'}">
             <div class="chat-bubble">
-              ${!isOwn && chat.type === 'group' ? `<div class="chat-bubble-sender">${escapeHtml(message.sender_name)}</div>` : ''}
+              ${senderLabel}
               <div>${escapeHtml(message.text)}</div>
               <div class="chat-bubble-time">${escapeHtml(formatChatTime(message.created_at))}</div>
             </div>
@@ -1183,9 +1524,77 @@ function renderActiveChat() {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
+function openActiveChatProfile() {
+  const chat = communityChats.find(item => item.id === activeChatId);
+  const actor = getCommunityActor();
+  if (!chat || !actor) return;
+
+  if (chat.type === 'direct') {
+    const otherEmail = (chat.members || []).find(email => email !== actor.email.toLowerCase());
+    if (otherEmail) showUserProfile(otherEmail);
+    return;
+  }
+
+  showUserProfile(actor.email);
+}
+
+function showUserProfile(email) {
+  const user = registeredUsers.find(u => u.email.toLowerCase() === String(email || '').toLowerCase());
+  if (!user) {
+    showToast('Profil tidak ditemukan.');
+    return;
+  }
+
+  profileViewEmail = user.email;
+  const profile = getCommunityProfile(user.email);
+  const online = isUserOnline(user.email);
+  const actor = getCommunityActor();
+
+  document.getElementById('profile-avatar')?.replaceChildren(document.createTextNode(user.role === 'admin' ? '⭐' : '👤'));
+  document.getElementById('profile-name')?.replaceChildren(document.createTextNode(getCommunityDisplayName(user)));
+  document.getElementById('profile-role')?.replaceChildren(document.createTextNode(user.role === 'admin' ? 'Admin' : 'Member'));
+
+  const details = document.getElementById('profile-details');
+  if (details) {
+    details.innerHTML = `
+      <div class="profile-detail-row"><span>Email</span><span>${escapeHtml(user.email)}</span></div>
+      <div class="profile-detail-row"><span>Status</span><span>${online ? 'Online <span class="online-dot"></span>' : 'Offline <span class="online-dot offline"></span>'}</span></div>
+      <div class="profile-detail-row"><span>Minecraft</span><span>${escapeHtml(user.minecraft_name || '-')}</span></div>
+      <div class="profile-detail-row"><span>Bergabung</span><span>${escapeHtml(formatDate(user.joined_at))}</span></div>
+      ${profile.bio ? `<div class="profile-detail-row"><span>Bio</span><span>${escapeHtml(profile.bio)}</span></div>` : ''}
+    `;
+  }
+
+  const chatBtn = document.getElementById('profile-chat-btn');
+  if (chatBtn) {
+    const isSelf = actor && actor.email.toLowerCase() === user.email.toLowerCase();
+    chatBtn.classList.toggle('hidden', isSelf);
+    chatBtn.onclick = () => {
+      hideProfileModal();
+      startDirectChat(user.email, user.name);
+    };
+  }
+
+  document.getElementById('profile-modal')?.classList.remove('hidden');
+}
+
+function hideProfileModal() {
+  document.getElementById('profile-modal')?.classList.add('hidden');
+  profileViewEmail = null;
+}
+
+function profileStartChat() {
+  if (!profileViewEmail) return;
+  const user = registeredUsers.find(u => u.email.toLowerCase() === profileViewEmail.toLowerCase());
+  if (!user) return;
+  hideProfileModal();
+  startDirectChat(user.email, user.name);
+}
+
 async function sendCommunityMessage(event) {
   event.preventDefault();
-  if (!currentUser || !activeChatId) return;
+  const actor = getCommunityActor();
+  if (!actor || !activeChatId) return;
 
   const input = document.getElementById('chat-message-input');
   const text = input?.value.trim();
@@ -1196,9 +1605,9 @@ async function sendCommunityMessage(event) {
       const data = await apiRequest('/api/community/messages', {
         method: 'POST',
         body: JSON.stringify({
-          email: currentUser.email,
+          email: actor.email,
           chat_id: activeChatId,
-          sender_name: currentUser.name,
+          sender_name: getCommunityDisplayName(actor),
           text
         })
       });
@@ -1207,13 +1616,13 @@ async function sendCommunityMessage(event) {
     } else {
       const state = loadLocalCommunityState();
       const chat = state.chats.find(item => item.id === activeChatId);
-      if (!chat || !chat.members.includes(currentUser.email.toLowerCase())) return;
+      if (!chat || !chat.members.includes(actor.email.toLowerCase())) return;
 
       const message = {
         id: `msg_${Date.now()}`,
         chat_id: activeChatId,
-        sender_email: currentUser.email.toLowerCase(),
-        sender_name: currentUser.name,
+        sender_email: actor.email.toLowerCase(),
+        sender_name: getCommunityDisplayName(actor),
         text: text.slice(0, 2000),
         created_at: new Date().toISOString()
       };
@@ -1227,7 +1636,7 @@ async function sendCommunityMessage(event) {
       chat.updated_at = message.created_at;
       saveLocalCommunityState(state);
       communityMessages.push(message);
-      communityChats = getUserCommunityChats(state, currentUser.email);
+      communityChats = getUserCommunityChats(state, actor.email);
     }
 
     input.value = '';
@@ -1240,10 +1649,11 @@ async function sendCommunityMessage(event) {
 }
 
 function showNewGroupModal() {
-  if (!currentUser) return navigateTo('login');
+  const actor = getCommunityActor();
+  if (!actor) return showCommunityLoginOverlay();
   const picker = document.getElementById('group-member-picker');
   if (picker) {
-    const others = registeredUsers.filter(user => user.email.toLowerCase() !== currentUser.email.toLowerCase());
+    const others = registeredUsers.filter(user => user.email.toLowerCase() !== actor.email.toLowerCase());
     picker.innerHTML = others.length
       ? others.map(user => `
           <label class="member-picker-item">
@@ -1262,7 +1672,8 @@ function hideNewGroupModal() {
 }
 
 function showNewDmModal() {
-  if (!currentUser) return navigateTo('login');
+  const actor = getCommunityActor();
+  if (!actor) return showCommunityLoginOverlay();
   renderDmMemberList();
   document.getElementById('dm-member-search').value = '';
   document.getElementById('new-dm-modal')?.classList.remove('hidden');
@@ -1278,22 +1689,24 @@ function filterDmMemberList() {
 
 function renderDmMemberList() {
   const list = document.getElementById('dm-member-list');
-  if (!list || !currentUser) return;
+  const actor = getCommunityActor();
+  if (!list || !actor) return;
 
   const query = document.getElementById('dm-member-search')?.value.trim().toLowerCase() || '';
   const others = registeredUsers.filter(user => {
-    if (user.email.toLowerCase() === currentUser.email.toLowerCase()) return false;
+    if (user.email.toLowerCase() === actor.email.toLowerCase()) return false;
     if (!query) return true;
-    return user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+    const displayName = getCommunityDisplayName(user).toLowerCase();
+    return user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query) || displayName.includes(query);
   });
 
   list.innerHTML = others.length
     ? others.map(user => `
         <button type="button" class="member-picker-item clickable-dm" onclick="startDirectChat(${JSON.stringify(user.email)}, ${JSON.stringify(user.name)}); return false;">
-          <div class="chat-avatar" style="width:36px;height:36px;font-size:16px;">💬</div>
+          <div class="chat-avatar" style="width:36px;height:36px;font-size:16px;">👤</div>
           <div>
-            <div style="font-weight:600;">${escapeHtml(user.name)}</div>
-            <div style="font-size:12px;color:var(--gray-muted);">${escapeHtml(user.email)}</div>
+            <div style="font-weight:600;">${escapeHtml(getCommunityDisplayName(user))}</div>
+            <div style="font-size:12px;color:var(--gray-muted);">${escapeHtml(user.email)}${isUserOnline(user.email) ? ' · Online' : ''}</div>
           </div>
         </button>
       `).join('')
@@ -1302,7 +1715,8 @@ function renderDmMemberList() {
 
 async function handleCreateGroup(event) {
   event.preventDefault();
-  if (!currentUser) return;
+  const actor = getCommunityActor();
+  if (!actor) return;
 
   const groupName = document.getElementById('group-name')?.value.trim();
   const selected = Array.from(document.querySelectorAll('input[name="group-member"]:checked')).map(el => el.value);
@@ -1313,8 +1727,8 @@ async function handleCreateGroup(event) {
       const data = await apiRequest('/api/community/chats', {
         method: 'POST',
         body: JSON.stringify({
-          email: currentUser.email,
-          name: currentUser.name,
+          email: actor.email,
+          name: getCommunityDisplayName(actor),
           type: 'group',
           group_name: groupName,
           members: selected
@@ -1324,13 +1738,13 @@ async function handleCreateGroup(event) {
       if (data?.chat) openChat(data.chat.id);
     } else {
       const state = loadLocalCommunityState();
-      const members = new Set([currentUser.email.toLowerCase(), ...selected.map(email => email.toLowerCase())]);
+      const members = new Set([actor.email.toLowerCase(), ...selected.map(email => email.toLowerCase())]);
       const chat = {
         id: `group_${Date.now()}`,
         type: 'group',
         name: groupName,
         members: Array.from(members),
-        created_by: currentUser.email.toLowerCase(),
+        created_by: actor.email.toLowerCase(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         avatar: '👥',
@@ -1338,7 +1752,7 @@ async function handleCreateGroup(event) {
       };
       state.chats.unshift(chat);
       saveLocalCommunityState(state);
-      communityChats = getUserCommunityChats(state, currentUser.email);
+      communityChats = getUserCommunityChats(state, actor.email);
       openChat(chat.id);
     }
 
@@ -1351,15 +1765,16 @@ async function handleCreateGroup(event) {
 }
 
 async function startDirectChat(targetEmail, targetName) {
-  if (!currentUser) return;
+  const actor = getCommunityActor();
+  if (!actor) return showCommunityLoginOverlay();
 
   try {
     if (hasApiBridge()) {
       const data = await apiRequest('/api/community/chats', {
         method: 'POST',
         body: JSON.stringify({
-          email: currentUser.email,
-          name: currentUser.name,
+          email: actor.email,
+          name: getCommunityDisplayName(actor),
           type: 'direct',
           target_email: targetEmail,
           target_name: targetName
@@ -1370,19 +1785,19 @@ async function startDirectChat(targetEmail, targetName) {
       openChat(data.chat.id);
     } else {
       const state = loadLocalCommunityState();
-      const chatId = buildDirectChatId(currentUser.email, targetEmail);
+      const chatId = buildDirectChatId(actor.email, targetEmail);
       let chat = state.chats.find(item => item.id === chatId);
       if (!chat) {
         chat = {
           id: chatId,
           type: 'direct',
           name: targetName,
-          members: [currentUser.email.toLowerCase(), targetEmail.toLowerCase()],
+          members: [actor.email.toLowerCase(), targetEmail.toLowerCase()],
           member_names: {
-            [currentUser.email.toLowerCase()]: currentUser.name,
+            [actor.email.toLowerCase()]: getCommunityDisplayName(actor),
             [targetEmail.toLowerCase()]: targetName
           },
-          created_by: currentUser.email.toLowerCase(),
+          created_by: actor.email.toLowerCase(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           avatar: '💬',
@@ -1391,7 +1806,7 @@ async function startDirectChat(targetEmail, targetName) {
         state.chats.unshift(chat);
         saveLocalCommunityState(state);
       }
-      communityChats = getUserCommunityChats(state, currentUser.email);
+      communityChats = getUserCommunityChats(state, actor.email);
       openChat(chat.id);
     }
 
@@ -1448,7 +1863,7 @@ function handleCreatePost(event) {
   document.getElementById('post-content').value = '';
   document.getElementById('post-tags').value = '';
   renderPlayerDataSection();
-  setTimeout(() => navigateTo('komunitas'), 900);
+  setTimeout(() => openCommunityOverlay(), 900);
 }
 
 function loadMembers() {
@@ -1472,7 +1887,15 @@ function displayMembers(users) {
 }
 
 function toggleFontEditor() {
-  document.getElementById('font-editor')?.classList.toggle('hidden');
+  const editor = document.getElementById('font-editor');
+  const toggle = document.getElementById('font-editor-toggle');
+  editor?.classList.toggle('hidden');
+  const isOpen = editor && !editor.classList.contains('hidden');
+  document.body.classList.toggle('font-editor-open', Boolean(isOpen));
+  if (toggle) {
+    toggle.textContent = isOpen ? '✕' : '✏️';
+    toggle.setAttribute('aria-label', isOpen ? 'Tutup Font Editor' : 'Buka Font Editor');
+  }
 }
 
 function updateFontSettings() {
@@ -1530,10 +1953,6 @@ function toggleScrollButton() {
 
 function scrollToSection(sectionId) {
   document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function toggleUserMenu() {
-  document.getElementById('user-dropdown')?.classList.toggle('active');
 }
 
 function escapeHtml(text) {

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pengaturan Komunitas - Server_MC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="toast-message" class="toast hidden"></div>
+
+  <div id="community-login-overlay" class="community-login-overlay hidden">
+    <div class="community-login-card">
+      <h2>Login Komunitas</h2>
+      <p class="login-subtitle">Masuk ke pengaturan komunitas dengan akun yang sudah terdaftar di website.</p>
+      <div id="community-login-error" class="error-message hidden"></div>
+      <form onsubmit="handleCommunityLogin(event)" autocomplete="off">
+        <div class="form-group">
+          <label for="community-login-email">Email</label>
+          <input type="email" id="community-login-email" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label for="community-login-password">Password</label>
+          <input type="password" id="community-login-password" autocomplete="new-password" required>
+        </div>
+        <div class="community-login-actions">
+          <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'; return false;">Kembali</button>
+          <button type="submit" class="btn btn-primary">Masuk</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <main class="settings-page">
+    <div class="settings-card">
+      <a href="index.html" class="btn btn-ghost" style="margin-bottom: 20px; display: inline-block;">← Kembali ke Website</a>
+      <h1>Pengaturan Komunitas</h1>
+      <p class="settings-subtitle">Kelola profil dan preferensi akun komunitas Anda. Sesi ini terpisah dari login website utama.</p>
+
+      <div id="settings-guest" class="hidden">
+        <p style="color: var(--gray-muted);">Silakan login komunitas terlebih dahulu.</p>
+        <button type="button" class="btn btn-primary" style="margin-top: 16px;" onclick="showCommunityLoginOverlay(); return false;">Login Komunitas</button>
+      </div>
+
+      <div id="settings-content" class="hidden">
+        <div class="settings-section">
+          <h3>Profil Akun</h3>
+          <div class="profile-detail-row"><span>Nama</span><span id="settings-name">-</span></div>
+          <div class="profile-detail-row"><span>Email</span><span id="settings-email">-</span></div>
+          <div class="profile-detail-row"><span>Role</span><span id="settings-role">-</span></div>
+          <div class="profile-detail-row"><span>Status</span><span id="settings-status">-</span></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Tampilan Komunitas</h3>
+          <div class="form-group">
+            <label for="settings-display-name">Nama Tampilan</label>
+            <input type="text" id="settings-display-name" maxlength="40" placeholder="Nama di chat komunitas">
+          </div>
+          <div class="form-group">
+            <label for="settings-bio">Bio / Status</label>
+            <textarea id="settings-bio" rows="3" maxlength="160" placeholder="Tulis bio singkat..."></textarea>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="saveCommunitySettings(); return false;">Simpan Perubahan</button>
+        </div>
+
+        <div class="settings-section">
+          <h3>Sesi Komunitas</h3>
+          <p style="color: var(--gray-muted); font-size: 14px; margin-bottom: 16px;">Logout hanya dari komunitas. Sesi website utama tidak terpengaruh.</p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html#community'; return false;">Buka Chat</button>
+            <button type="button" class="btn btn-danger" onclick="logoutCommunity(true); return false;">Logout Komunitas</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
