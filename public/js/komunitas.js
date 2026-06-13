@@ -7,6 +7,13 @@ let activeChatType = null; // 'group' or 'dm'
 
 // Initialize community page
 document.addEventListener('DOMContentLoaded', () => {
+  // Sync with main website user if not logged in to community
+  if (!communityUser && currentUser) {
+    communityUser = currentUser;
+    localStorage.setItem('servermc_community_user', JSON.stringify(currentUser));
+    localStorage.setItem('servermc_community_token', 'synced_from_main');
+  }
+  
   checkCommunityAuth();
   loadCommunityData();
   updateCommunityUI();
@@ -33,6 +40,14 @@ function loadCommunityData() {
   if (communityChats.length === 0) {
     initializeDefaultChats();
   }
+  
+  // Ensure all chats have message arrays
+  communityChats.forEach(chat => {
+    if (!communityMessages[chat.id]) {
+      communityMessages[chat.id] = [];
+    }
+  });
+  saveCommunityMessages();
 }
 
 // Initialize default chats
@@ -363,11 +378,13 @@ function sendCommunityMessage(event) {
   // Clear input
   input.value = '';
   
-  // Reload messages
+  // Reload messages immediately
   loadChatMessages(activeChatId);
   
-  // Update chat list preview
-  loadCommunityChat();
+  // Update chat list preview with a small delay to ensure data is saved
+  setTimeout(() => {
+    loadCommunityChat();
+  }, 100);
   
   showToast('Pesan terkirim');
 }
@@ -506,8 +523,13 @@ function loadDmMemberList() {
   
   list.innerHTML = '';
   
+  if (!registeredUsers || registeredUsers.length === 0) {
+    list.innerHTML = '<p style="color: var(--gray-muted); text-align: center; padding: 20px;">Belum ada member terdaftar.</p>';
+    return;
+  }
+  
   registeredUsers.forEach(user => {
-    if (user.email === communityUser.email) return;
+    if (user.email === communityUser?.email) return;
     
     const item = document.createElement('button');
     item.className = 'member-picker-item clickable-dm';
@@ -538,6 +560,16 @@ function filterDmMemberList() {
 
 // Start DM chat
 function startDmChat(user) {
+  if (!communityUser) {
+    showCommunityLoginOverlay();
+    return;
+  }
+  
+  if (!user || !user.email) {
+    showToast('User tidak valid');
+    return;
+  }
+  
   // Check if DM already exists
   const existingDm = communityChats.find(c => 
     c.type === 'dm' && 
