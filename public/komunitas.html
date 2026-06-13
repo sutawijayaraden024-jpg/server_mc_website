@@ -169,19 +169,19 @@
         </div>
       </div>
 
-      <!-- User Panel Bottom -->
+      <!-- User Panel Bottom — Discord-style with avatar, status, and action buttons -->
       <div class="user-panel">
-        <div class="user-panel-left">
-          <div class="user-panel-avatar" onclick="viewProfile(communityUser?.email)">👤</div>
+        <div class="user-panel-left" onclick="document.getElementById('status-modal')?.classList.remove('hidden')" style="cursor:pointer;">
+          <div class="user-panel-avatar" id="user-panel-avatar">👤</div>
           <div class="user-panel-details">
             <span id="user-panel-name">Guest</span>
-            <span id="user-panel-id">#0000</span>
+            <span id="user-panel-id">Offline</span>
           </div>
         </div>
-        <div class="user-panel-actions">
-          <button class="user-panel-btn" onclick="toggleMute()" title="Mute">🎤</button>
-          <button class="user-panel-btn" onclick="toggleDeafen()" title="Deafen">🔇</button>
-          <button class="user-panel-btn" onclick="showSettingsModal()" title="Pengaturan">⚙️</button>
+        <div class="user-panel-actions" style="display:flex;gap:2px;">
+          <button class="user-panel-btn" onclick="showMusicPlaylist()" title="Music">�</button>
+          <button class="user-panel-btn" onclick="showSettingsModal()" title="Settings">⚙️</button>
+          <button class="user-panel-btn" onclick="logoutCommunity(true)" title="Logout">🚪</button>
         </div>
       </div>
     </aside>
@@ -467,6 +467,34 @@
           <button class="btn btn-primary" onclick="document.getElementById('music-file-input').click(); return false;">Upload</button>
         </div>
         <div id="playlist-tracks" style="max-height:300px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Modal -->
+  <div id="status-modal" class="modal-overlay hidden" onclick="if(event.target===this) this.classList.add('hidden');">
+    <div class="modal-card" style="max-width:320px;">
+      <div class="modal-header">
+        <h3>🟢 Set Status</h3>
+        <button class="modal-close" onclick="document.getElementById('status-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:4px;">
+        <button class="settings-btn" onclick="setStatus('online');">🟢 Online</button>
+        <button class="settings-btn" onclick="setStatus('idle');">🟡 Idle</button>
+        <button class="settings-btn" onclick="setStatus('dnd');">🔴 Do Not Disturb</button>
+        <button class="settings-btn" onclick="setStatus('invisible');">⚫ Invisible</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Language Modal -->
+  <div id="language-modal" class="modal-overlay hidden" onclick="if(event.target===this) this.classList.add('hidden');">
+    <div class="modal-card" style="max-width:360px;">
+      <div class="modal-header">
+        <h3>🌐 Language / Bahasa</h3>
+        <button class="modal-close" onclick="document.getElementById('language-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body" id="language-list" style="max-height:350px;overflow-y:auto;">
       </div>
     </div>
   </div>

@@ -951,6 +951,52 @@ function loadCommunityChat() {
   if (activeChatType === 'channel') loadChannelMessages(activeChannel);
 }
 
+function setStatus(status) {
+  const actor = getCommunityActor();
+  if (!actor) return;
+  const states = { online: '🟢 Online', idle: '🟡 Idle', dnd: '🔴 Do Not Disturb', invisible: '⚫ Invisible' };
+  localStorage.setItem('servermc_status', status);
+  const el = document.getElementById('channel-user-status');
+  if (el) el.textContent = states[status] || '⚫ Offline';
+  const el2 = document.getElementById('user-panel-id');
+  if (el2) el2.textContent = states[status] || '⚫ Offline';
+  document.getElementById('status-modal')?.classList.add('hidden');
+  showToast('Status: ' + states[status]);
+}
+
+function showLanguageModal() {
+  const container = document.getElementById('language-list');
+  if (!container) return;
+  const langs = [
+    { code: 'id', name: 'Indonesia' },
+    { code: 'en', name: 'English' },
+    { code: 'ja', name: '日本語' },
+    { code: 'ko', name: '한국어' },
+    { code: 'zh', name: '中文' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'fr', name: 'Français' },
+    { code: 'es', name: 'Español' },
+    { code: 'ru', name: 'Русский' },
+    { code: 'ar', name: 'العربية' },
+    { code: 'pt', name: 'Português' },
+    { code: 'tr', name: 'Türkçe' },
+    { code: 'th', name: 'ไทย' },
+    { code: 'vi', name: 'Tiếng Việt' },
+    { code: 'hi', name: 'हिन्दी' }
+  ];
+  const current = localStorage.getItem('servermc_lang') || 'id';
+  container.innerHTML = langs.map(l =>
+    `<button class="settings-btn" onclick="setLanguage('${l.code}')">${current === l.code ? '✓ ' : ''}${l.name} (${l.code})</button>`
+  ).join('');
+  document.getElementById('language-modal')?.classList.remove('hidden');
+}
+
+function setLanguage(code) {
+  localStorage.setItem('servermc_lang', code);
+  document.getElementById('language-modal')?.classList.add('hidden');
+  showToast('🌐 Language set to ' + code);
+}
+
 function openCommunitySettings() {
   const actor = getCommunityActor();
   if (!actor) { showCommunityLoginOverlay(); return; }
@@ -967,8 +1013,16 @@ function updatePresence() {
   const actor = getCommunityActor();
   if (!actor) return;
   
+  const displayName = getCommunityDisplayName(actor);
   const isOnline = (onlinePlayers || []).some(u => u.email === actor.email);
-  document.getElementById('channel-user-status').textContent = isOnline ? '🟢 Online' : '⚫ Offline';
+  
+  // Always update all identity elements from real account
+  const chName = document.getElementById('channel-user-name');
+  if (chName) chName.textContent = displayName;
+  const panelName = document.getElementById('user-panel-name');
+  if (panelName) panelName.textContent = displayName;
+  const status = document.getElementById('channel-user-status');
+  if (status) status.textContent = isOnline ? '🟢 Online' : '⚫ Offline';
   
   renderMemberList();
 }
@@ -981,12 +1035,15 @@ document.addEventListener('DOMContentLoaded', function() {
   NotificationSystem.load();
   FriendSystem.load();
   
-  // Initial render
+  // Initial render — fix "Guest" bug: always use real logged-in account
   const actor = getCommunityActor();
   if (actor) {
-    document.getElementById('channel-user-name').textContent = actor.name;
-    document.getElementById('user-panel-name').textContent = actor.name;
+    const displayName = getCommunityDisplayName(actor);
+    document.getElementById('channel-user-name').textContent = displayName;
+    document.getElementById('user-panel-name').textContent = displayName;
     document.getElementById('user-panel-id').textContent = '#' + (actor.id || '0000');
+    document.getElementById('channel-user-avatar').textContent = actor.role === 'admin' ? '⭐' : '👤';
+    document.getElementById('user-panel-avatar').textContent = actor.role === 'admin' ? '⭐' : '👤';
     updatePresence();
   }
 
