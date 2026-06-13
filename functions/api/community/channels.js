@@ -1,8 +1,8 @@
 // Community Channels API
 // Handles channel creation, management, and messages
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const channelRateLimit = rateLimit({
   windowMs: 60 * 1000,

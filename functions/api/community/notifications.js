@@ -1,8 +1,8 @@
 // Notifications API
 // Handles real-time notifications for mentions, replies, friend requests, announcements, music updates
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const notificationRateLimit = rateLimit({
   windowMs: 60 * 1000,

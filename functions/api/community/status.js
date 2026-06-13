@@ -1,7 +1,7 @@
 // Online Status Detection System
 // Handles automatic status detection (online, idle, do not disturb, offline)
 
-import { verifySession } from '../_lib/auth.js';
+import { verifySession } from '../../_lib/auth.js';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const OFFLINE_TIMEOUT = 30 * 60 * 1000; // 30 minutes

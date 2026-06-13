@@ -1,8 +1,8 @@
 // Music Room API
 // Handles playlist management, track upload, and playback
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const musicRateLimit = rateLimit({
   windowMs: 60 * 1000,

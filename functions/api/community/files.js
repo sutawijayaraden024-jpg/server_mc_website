@@ -1,8 +1,8 @@
 // Files API
 // Handles file uploads, storage, and metadata tracking
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const uploadRateLimit = rateLimit({
   windowMs: 60 * 1000,

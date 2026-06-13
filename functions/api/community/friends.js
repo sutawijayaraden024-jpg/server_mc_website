@@ -1,8 +1,8 @@
 // Friends API
 // Handles friend requests, acceptance, rejection, and blocking
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const friendRateLimit = rateLimit({
   windowMs: 60 * 1000,

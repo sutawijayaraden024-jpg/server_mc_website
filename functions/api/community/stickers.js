@@ -1,8 +1,8 @@
 // Sticker System API
 // Handles sticker upload, sending, saving, and favoriting
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const stickerRateLimit = rateLimit({
   windowMs: 60 * 1000,

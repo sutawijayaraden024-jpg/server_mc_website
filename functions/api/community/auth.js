@@ -1,8 +1,8 @@
 // Community Authentication API
 // Integrated with main website authentication system
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 // Rate limiting: 100 requests per minute per user
 const authRateLimit = rateLimit({

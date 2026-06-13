@@ -1,8 +1,8 @@
 // Search API
 // Handles search for messages, members, files, audio, video, links, stickers
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const searchRateLimit = rateLimit({
   windowMs: 60 * 1000,

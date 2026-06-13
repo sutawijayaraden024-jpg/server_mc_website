@@ -1,8 +1,8 @@
 // Community/Group Management API
 // Handles community creation, management, and member operations
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const communityRateLimit = rateLimit({
   windowMs: 60 * 1000,

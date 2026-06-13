@@ -1,8 +1,8 @@
 // Music from Chat Feature
 // Allows adding audio files from chat to playlist
 
-import { verifySession } from '../_lib/auth.js';
-import { rateLimit } from '../_lib/rate-limit.js';
+import { verifySession } from '../../_lib/auth.js';
+import { rateLimit } from '../../_lib/rate-limit.js';
 
 const musicChatRateLimit = rateLimit({
   windowMs: 60 * 1000,
