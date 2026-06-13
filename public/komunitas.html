@@ -471,7 +471,9 @@
     </div>
   </div>
 
-  <!-- NANO PLAYER - Thin bar, only shows when music plays -->
+  <script src="js/app.js"></script>
+
+  <!-- NANO PLAYER - OUTSIDE .app, position:fixed, no flex interference -->
   <div id="nano-player" class="nano-player hidden">
     <div class="nano-progress-track">
       <div class="nano-progress-fill" id="nano-progress-fill" style="width:0%"></div>
@@ -490,7 +492,7 @@
     </div>
   </div>
 
-  <!-- BUBBLE PLAYER - Floating button that expands to full controls -->
+  <!-- BUBBLE PLAYER - OUTSIDE .app, overlapping overlay, not layout -->
   <div id="bubble-player" class="bubble-player">
     <button id="bubble-toggle" class="bubble-toggle hidden" onclick="toggleBubblePanel()" title="Music">
       🎵
@@ -508,11 +510,11 @@
         </div>
       </div>
       <div class="bubble-progress">
-        <span class="nano-time" id="bubble-current-time">0:00</span>
+        <span id="bubble-current-time" style="font-size:11px;color:var(--text-muted);">0:00</span>
         <div class="bubble-progress-track">
           <div class="bubble-progress-fill" id="bubble-progress-fill" style="width:0%"></div>
         </div>
-        <span class="nano-time" id="bubble-total-time">0:00</span>
+        <span id="bubble-total-time" style="font-size:11px;color:var(--text-muted);">0:00</span>
       </div>
       <div class="bubble-controls">
         <button class="bctrl" onclick="MusicEngine.toggleShuffle()" id="bubble-shuffle">🔀</button>
@@ -531,8 +533,6 @@
       <input type="file" id="bubble-file-input" accept="audio/mpeg,audio/ogg,audio/mp4,audio/wav,audio/flac,audio/x-m4a" style="display:none" onchange="handleMusicUpload(event)">
     </div>
   </div>
-
-  <script src="js/app.js"></script>
   <script src="js/komunitas.js"></script>
 </body>
 </html>

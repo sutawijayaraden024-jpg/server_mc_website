@@ -1007,16 +1007,18 @@ a:hover {
 
 /* ============ NANO PLAYER ============ */
 .nano-player {
-  position: fixed;
-  bottom: 0;
-  left: 72px;
-  right: 0;
-  height: 44px;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 44px !important;
   background: var(--bg-card);
   border-top: 1px solid var(--gold-border);
-  z-index: 90;
+  z-index: 99999 !important;
   backdrop-filter: blur(10px);
   transition: opacity 0.3s ease, height 0.3s ease;
+  transform: none !important;
 }
 
 .nano-player.hidden {
@@ -1116,10 +1118,10 @@ a:hover {
 
 /* ============ BUBBLE PLAYER ============ */
 .bubble-player {
-  position: fixed;
-  bottom: 56px;
-  right: 20px;
-  z-index: 95;
+  position: fixed !important;
+  bottom: 56px !important;
+  right: 20px !important;
+  z-index: 99998 !important;
 }
 
 .bubble-toggle {
@@ -1942,12 +1944,13 @@ a:hover {
   }
   
   .nano-player {
-    left: 56px;
+    left: 0 !important;
+    width: 100% !important;
   }
   
   .bubble-player {
-    bottom: 50px;
-    right: 12px;
+    bottom: 50px !important;
+    right: 12px !important;
   }
   
   .bubble-panel {
@@ -1995,6 +1998,7 @@ a:hover {
   }
   
   .nano-player {
-    left: 48px;
+    left: 0 !important;
+    width: 100% !important;
   }
 }
