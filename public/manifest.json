@@ -1,0 +1,27 @@
+{
+  "name": "Server_MC Chat",
+  "short_name": "ServerMC",
+  "description": "Discord-style community chat untuk pemain Minecraft",
+  "start_url": "/komunitas.html",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#D4AF37",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "communication"],
+  "lang": "id",
+  "dir": "ltr"
+}

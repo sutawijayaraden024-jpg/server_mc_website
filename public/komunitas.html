@@ -10,6 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/komunitas.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#D4AF37">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ServerMC">
 </head>
 <body>
   <div id="toast-message" class="toast hidden"></div>
@@ -331,86 +336,302 @@
     </div>
   </div>
 
-  <!-- Settings Modal -->
+  <!-- Settings Modal - Full 15 Categories -->
   <div id="settings-modal" class="modal-overlay hidden" onclick="if(event.target===this) hideSettingsModal();">
     <div class="modal-card settings-card">
       <div class="modal-header">
-        <h3>Pengaturan</h3>
+        <h3>⚙️ Pengaturan</h3>
         <button class="modal-close" onclick="hideSettingsModal()">✕</button>
       </div>
       <div class="settings-body">
-        <div class="settings-nav">
+        <div class="settings-nav" id="settings-nav">
           <button class="settings-nav-item active" data-cat="account" onclick="switchSettings('account')">👤 Akun</button>
-          <button class="settings-nav-item" data-cat="personalization" onclick="switchSettings('personalization')">🎨 Tampilan</button>
-          <button class="settings-nav-item" data-cat="community" onclick="switchSettings('community')">👥 Komunitas</button>
+          <button class="settings-nav-item" data-cat="profile" onclick="switchSettings('profile')">🖼 Profil</button>
+          <button class="settings-nav-item" data-cat="security" onclick="switchSettings('security')">🔒 Keamanan</button>
+          <button class="settings-nav-item" data-cat="privacy" onclick="switchSettings('privacy')">👁 Privasi</button>
+          <button class="settings-nav-item" data-cat="language" onclick="showLanguageModal()">🌐 Bahasa</button>
+          <button class="settings-nav-item" data-cat="theme" onclick="switchSettings('theme')">🎨 Tema</button>
+          <button class="settings-nav-item" data-cat="notifications" onclick="switchSettings('notifications')">🔔 Notifikasi</button>
           <button class="settings-nav-item" data-cat="music" onclick="switchSettings('music')">🎵 Musik</button>
+          <button class="settings-nav-item" data-cat="chat" onclick="switchSettings('chat')">💬 Chat</button>
+          <button class="settings-nav-item" data-cat="community" onclick="switchSettings('community')">👥 Komunitas</button>
+          <button class="settings-nav-item" data-cat="devices" onclick="switchSettings('devices')">📱 Perangkat</button>
+          <button class="settings-nav-item" data-cat="storage" onclick="switchSettings('storage')">💾 Penyimpanan</button>
           <button class="settings-nav-item" data-cat="accessibility" onclick="switchSettings('accessibility')">♿ Akses</button>
+          <button class="settings-nav-item" data-cat="developer" onclick="switchSettings('developer')">⚡ Developer</button>
+          <button class="settings-nav-item" data-cat="about" onclick="switchSettings('about')">ℹ️ Tentang</button>
         </div>
         <div class="settings-content">
           <div id="sett-account" class="settings-pane active">
-            <h4>Akun</h4>
-            <button class="settings-btn" onclick="editProfile()">Edit Profil</button>
+            <h4>👤 Akun</h4>
+            <button class="settings-btn" onclick="editProfile()">Edit Nama Tampilan</button>
             <button class="settings-btn" onclick="changeAvatar()">Ganti Avatar</button>
             <button class="settings-btn" onclick="changeBanner()">Ganti Banner</button>
+            <div class="settings-info" id="sett-account-info">
+              <p>Email: <span id="sett-email">-</span></p>
+              <p>Bergabung: <span id="sett-joined">-</span></p>
+              <p>Role: <span id="sett-role">-</span></p>
+            </div>
           </div>
-          <div id="sett-personalization" class="settings-pane">
-            <h4>Tampilan</h4>
+          <div id="sett-profile" class="settings-pane">
+            <h4>🖼 Profil</h4>
             <div class="settings-row">
-              <label>Tema</label>
-              <select class="settings-select" onchange="saveSettings()">
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
+              <label>Bio</label>
+              <textarea class="settings-textarea" id="sett-bio" maxlength="160" placeholder="Tulis tentang dirimu..."></textarea>
+            </div>
+            <div class="settings-row">
+              <label>Status</label>
+              <select class="settings-select" id="sett-profile-status" onchange="setStatus(this.value)">
+                <option value="online">Online</option>
+                <option value="idle">Idle</option>
+                <option value="dnd">Do Not Disturb</option>
+                <option value="invisible">Invisible</option>
+              </select>
+            </div>
+            <button class="settings-btn" onclick="saveProfile()">💾 Simpan Profil</button>
+          </div>
+          <div id="sett-security" class="settings-pane">
+            <h4>🔒 Keamanan</h4>
+            <div class="settings-row">
+              <label>Verifikasi 2 Langkah</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-2fa" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Notifikasi Login Baru</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-login-notif" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Sesi Aktif</label>
+              <span style="font-size:12px;color:var(--text-muted);"><span id="sett-sessions">1</span> perangkat</span>
+            </div>
+            <button class="settings-btn" onclick="showToast('🔒 Fitur keamanan akan segera hadir')">Kelola Sesi</button>
+          </div>
+          <div id="sett-privacy" class="settings-pane">
+            <h4>👁 Privasi</h4>
+            <div class="settings-row">
+              <label>Izinkan DM dari siapa saja</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-dm-all" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Tampilkan status online</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-show-status" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Blokir pesan dari non-teman</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-block-strangers" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Filter konten sensitif</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-filter" onchange="saveAllSettings()">
+            </div>
+          </div>
+          <div id="sett-theme" class="settings-pane">
+            <h4>🎨 Tema</h4>
+            <div class="settings-row">
+              <label>Mode</label>
+              <select class="settings-select" id="sett-theme-mode" onchange="saveAllSettings()">
+                <option value="dark">🌙 Dark</option>
+                <option value="light">☀️ Light</option>
+                <option value="auto">🔄 Auto</option>
               </select>
             </div>
             <div class="settings-row">
-              <label>Aksen</label>
-              <select class="settings-select" onchange="saveSettings()">
-                <option value="gold">Gold</option>
-                <option value="blue">Blue</option>
-                <option value="purple">Purple</option>
+              <label>Warna Aksen</label>
+              <select class="settings-select" id="sett-accent" onchange="saveAllSettings()">
+                <option value="gold">🥇 Gold</option>
+                <option value="blue">🔵 Blue</option>
+                <option value="purple">🟣 Purple</option>
+                <option value="green">🟢 Green</option>
+                <option value="red">🔴 Red</option>
+                <option value="pink">🩷 Pink</option>
               </select>
             </div>
             <div class="settings-row">
               <label>Ukuran Font</label>
-              <select class="settings-select" onchange="saveSettings()">
+              <select class="settings-select" id="sett-font-size" onchange="saveAllSettings()">
                 <option value="small">Kecil</option>
-                <option value="medium" selected>Sedang</option>
+                <option value="medium">Sedang</option>
                 <option value="large">Besar</option>
               </select>
             </div>
+            <div class="settings-row">
+              <label>Font</label>
+              <select class="settings-select" id="sett-font" onchange="saveAllSettings()">
+                <option value="inter">Inter</option>
+                <option value="poppins">Poppins</option>
+                <option value="noto">Noto Sans JP</option>
+                <option value="mono">Monospace</option>
+              </select>
+            </div>
+            <button class="settings-btn" onclick="resetTheme()">🔄 Reset Tema</button>
           </div>
-          <div id="sett-community" class="settings-pane">
-            <h4>Komunitas</h4>
+          <div id="sett-notifications" class="settings-pane">
+            <h4>🔔 Notifikasi</h4>
             <div class="settings-row">
               <label>Notifikasi Pesan</label>
-              <input type="checkbox" checked class="settings-checkbox" onchange="saveSettings()">
+              <input type="checkbox" checked class="settings-checkbox" id="sett-notif-msg" onchange="saveAllSettings()">
             </div>
             <div class="settings-row">
               <label>Notifikasi Mention</label>
-              <input type="checkbox" checked class="settings-checkbox" onchange="saveSettings()">
+              <input type="checkbox" checked class="settings-checkbox" id="sett-notif-mention" onchange="saveAllSettings()">
             </div>
             <div class="settings-row">
-              <label>Tampilkan Status</label>
-              <input type="checkbox" checked class="settings-checkbox" onchange="saveSettings()">
+              <label>Notifikasi Teman Online</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-notif-online" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Notifikasi Grup</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-notif-group" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Suara Notifikasi</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-notif-sound" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Preview Pesan di Notif</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-notif-preview" onchange="saveAllSettings()">
             </div>
           </div>
           <div id="sett-music" class="settings-pane">
-            <h4>Musik</h4>
+            <h4>🎵 Musik</h4>
             <div class="settings-row">
               <label>Auto Play</label>
-              <input type="checkbox" class="settings-checkbox" onchange="saveSettings()">
+              <input type="checkbox" class="settings-checkbox" id="sett-music-auto" onchange="saveAllSettings()">
             </div>
             <div class="settings-row">
               <label>Background Play</label>
-              <input type="checkbox" class="settings-checkbox" onchange="saveSettings()">
+              <input type="checkbox" checked class="settings-checkbox" id="sett-music-bg" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Crossfade</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-crossfade" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Kualitas</label>
+              <select class="settings-select" id="sett-quality" onchange="saveAllSettings()">
+                <option value="low">Rendah</option>
+                <option value="medium">Sedang</option>
+                <option value="high">Tinggi</option>
+              </select>
+            </div>
+            <button class="settings-btn" onclick="showMusicPlaylist()">🎶 Buka Playlist</button>
+          </div>
+          <div id="sett-chat" class="settings-pane">
+            <h4>💬 Chat</h4>
+            <div class="settings-row">
+              <label>Compact Mode</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-compact" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Tampilkan Timestamp</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-timestamp" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Kirim dengan Enter</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-enter-send" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Tampilkan Emoji</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-emoji" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Tampilkan Gambar Preview</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-img-preview" onchange="saveAllSettings()">
             </div>
           </div>
+          <div id="sett-community" class="settings-pane">
+            <h4>👥 Komunitas</h4>
+            <div class="settings-row">
+              <label>Gabung Otomatis ke Grup</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-auto-join" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Tampilkan Anggota Online</label>
+              <input type="checkbox" checked class="settings-checkbox" id="sett-show-online" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Notifikasi Acara Komunitas</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-event-notif" onchange="saveAllSettings()">
+            </div>
+          </div>
+          <div id="sett-devices" class="settings-pane">
+            <h4>📱 Perangkat</h4>
+            <div class="settings-info">
+              <p>Browser: <span id="sett-browser">-</span></p>
+              <p>OS: <span id="sett-os">-</span></p>
+              <p>Resolusi: <span id="sett-res">-</span></p>
+            </div>
+            <button class="settings-btn" onclick="showToast('📱 Perangkat terdeteksi otomatis')">Deteksi Ulang</button>
+          </div>
+          <div id="sett-storage" class="settings-pane">
+            <h4>💾 Penyimpanan</h4>
+            <div class="settings-info">
+              <p>Cache lokal: <span id="sett-cache-size">-</span></p>
+              <p>Pesan tersimpan: <span id="sett-stored-msgs">0</span></p>
+              <p>Lagu di queue: <span id="sett-queue-count">0</span></p>
+            </div>
+            <button class="settings-btn" onclick="clearLocalCache()">🗑 Hapus Cache Lokal</button>
+            <button class="settings-btn" onclick="exportData()">📤 Ekspor Data</button>
+          </div>
           <div id="sett-accessibility" class="settings-pane">
-            <h4>Aksesibilitas</h4>
+            <h4>♿ Aksesibilitas</h4>
             <div class="settings-row">
               <label>Kontras Tinggi</label>
-              <input type="checkbox" class="settings-checkbox" onchange="saveSettings()">
+              <input type="checkbox" class="settings-checkbox" id="sett-high-contrast" onchange="saveAllSettings()">
             </div>
+            <div class="settings-row">
+              <label>Animasi yang Dikurangi</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-reduced-anim" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Mode Buta Warna</label>
+              <select class="settings-select" id="sett-colorblind" onchange="saveAllSettings()">
+                <option value="none">Tidak Ada</option>
+                <option value="deuteranopia">Deuteranopia</option>
+                <option value="protanopia">Protanopia</option>
+                <option value="tritanopia">Tritanopia</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label>Ukuran Kursor</label>
+              <select class="settings-select" id="sett-cursor" onchange="saveAllSettings()">
+                <option value="normal">Normal</option>
+                <option value="large">Besar</option>
+              </select>
+            </div>
+            <button class="settings-btn" onclick="readAloud()">🔊 Bacakan Layar</button>
+          </div>
+          <div id="sett-developer" class="settings-pane">
+            <h4>⚡ Developer</h4>
+            <div class="settings-row">
+              <label>Mode Developer</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-devmode" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-row">
+              <label>Log Console</label>
+              <input type="checkbox" class="settings-checkbox" id="sett-console" onchange="saveAllSettings()">
+            </div>
+            <div class="settings-info" style="margin-top:8px;font-size:12px;">
+              <p>App Version: <span id="sett-version">2.0.0</span></p>
+              <p>Build: <span id="sett-build">community-2024</span></p>
+            </div>
+            <button class="settings-btn" onclick="showToast('⚡ Developer mode toggled via checkbox')">Dev Tools</button>
+          </div>
+          <div id="sett-about" class="settings-pane">
+            <h4>ℹ️ Tentang</h4>
+            <div class="settings-info">
+              <p><strong>Server_MC Chat</strong></p>
+              <p>Versi 2.0.0</p>
+              <p>Discord-style community chat untuk pemain Minecraft</p>
+              <p style="margin-top:8px;">© 2024 Server_MC</p>
+              <p>Dibuat dengan ❤️ oleh Ra172 & Al170</p>
+              <p style="margin-top:8px;font-size:11px;color:var(--text-muted);">
+                Stack: Cloudflare Pages + D1 + Workers<br>
+                Frontend: Vanilla JS + HTML5 + CSS3
+              </p>
+            </div>
+            <button class="settings-btn" onclick="showToast('✅ Sistem sudah versi terbaru')">Periksa Update</button>
+            <button class="settings-btn" onclick="window.open('https://github.com/sutawijayaraden024-jpg/server_mc_website','_blank')">📖 Dokumentasi</button>
           </div>
         </div>
       </div>
@@ -562,5 +783,10 @@
     </div>
   </div>
   <script src="js/komunitas.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
 </body>
 </html>

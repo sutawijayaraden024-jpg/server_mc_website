@@ -763,6 +763,107 @@ function applySettings(s) {
   document.documentElement.style.setProperty('--gold-primary', accentColors[s.accent] || '#d4af37');
 }
 
+function saveAllSettings() {
+  const s = {};
+  // Theme
+  s.theme = document.getElementById('sett-theme-mode')?.value || 'dark';
+  s.accent = document.getElementById('sett-accent')?.value || 'gold';
+  s.font_size = document.getElementById('sett-font-size')?.value || 'medium';
+  s.font = document.getElementById('sett-font')?.value || 'inter';
+  // Notifications
+  s.notif_msg = document.getElementById('sett-notif-msg')?.checked ?? true;
+  s.notif_mention = document.getElementById('sett-notif-mention')?.checked ?? true;
+  s.notif_online = document.getElementById('sett-notif-online')?.checked ?? false;
+  s.notif_group = document.getElementById('sett-notif-group')?.checked ?? true;
+  s.notif_sound = document.getElementById('sett-notif-sound')?.checked ?? true;
+  s.notif_preview = document.getElementById('sett-notif-preview')?.checked ?? true;
+  // Privacy
+  s.dm_all = document.getElementById('sett-dm-all')?.checked ?? true;
+  s.show_status = document.getElementById('sett-show-status')?.checked ?? true;
+  s.block_strangers = document.getElementById('sett-block-strangers')?.checked ?? false;
+  s.filter = document.getElementById('sett-filter')?.checked ?? true;
+  // Chat
+  s.compact = document.getElementById('sett-compact')?.checked ?? false;
+  s.timestamp = document.getElementById('sett-timestamp')?.checked ?? true;
+  s.enter_send = document.getElementById('sett-enter-send')?.checked ?? true;
+  s.emoji = document.getElementById('sett-emoji')?.checked ?? true;
+  s.img_preview = document.getElementById('sett-img-preview')?.checked ?? true;
+  // Community
+  s.auto_join = document.getElementById('sett-auto-join')?.checked ?? true;
+  s.show_online = document.getElementById('sett-show-online')?.checked ?? true;
+  s.event_notif = document.getElementById('sett-event-notif')?.checked ?? false;
+  // Security
+  s.twofa = document.getElementById('sett-2fa')?.checked ?? false;
+  s.login_notif = document.getElementById('sett-login-notif')?.checked ?? true;
+  // Accessibility
+  s.high_contrast = document.getElementById('sett-high-contrast')?.checked ?? false;
+  s.reduced_anim = document.getElementById('sett-reduced-anim')?.checked ?? false;
+  s.colorblind = document.getElementById('sett-colorblind')?.value || 'none';
+  s.cursor = document.getElementById('sett-cursor')?.value || 'normal';
+  // Music
+  s.music_auto = document.getElementById('sett-music-auto')?.checked ?? false;
+  s.music_bg = document.getElementById('sett-music-bg')?.checked ?? true;
+  s.crossfade = document.getElementById('sett-crossfade')?.checked ?? false;
+  s.quality = document.getElementById('sett-quality')?.value || 'medium';
+  // Developer
+  s.devmode = document.getElementById('sett-devmode')?.checked ?? false;
+  s.console = document.getElementById('sett-console')?.checked ?? false;
+  // Save all
+  localStorage.setItem('servermc_settings', JSON.stringify(s));
+  applySettings(s);
+  showToast('✅ Semua pengaturan disimpan');
+}
+
+function resetTheme() {
+  document.getElementById('sett-theme-mode').value = 'dark';
+  document.getElementById('sett-accent').value = 'gold';
+  document.getElementById('sett-font-size').value = 'medium';
+  document.getElementById('sett-font').value = 'inter';
+  saveAllSettings();
+}
+
+function saveProfile() {
+  const actor = getCommunityActor();
+  if (!actor) return;
+  const bio = document.getElementById('sett-bio')?.value?.trim().slice(0, 160) || '';
+  const profiles = loadCommunityProfiles();
+  profiles[actor.email.toLowerCase()] = { ...(profiles[actor.email.toLowerCase()] || {}), bio };
+  saveCommunityProfiles(profiles);
+  showToast('✅ Profil disimpan');
+  if (hasApiBridge()) apiRequest('/api/community/auth', { method: 'POST', body: JSON.stringify({ bio }) }).catch(() => {});
+}
+
+function clearLocalCache() {
+  localStorage.removeItem('servermc_community');
+  localStorage.removeItem('servermc_messages');
+  showToast('🗑 Cache lokal dibersihkan');
+}
+
+function exportData() {
+  const data = {
+    settings: JSON.parse(localStorage.getItem('servermc_settings') || '{}'),
+    friends: JSON.parse(localStorage.getItem('servermc_friends') || '[]'),
+    notifications: JSON.parse(localStorage.getItem('servermc_notifications') || '[]'),
+    profiles: JSON.parse(localStorage.getItem('servermc_community_profiles') || '{}')
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'servermc-export.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 Data diekspor!');
+}
+
+function readAloud() {
+  if (!('speechSynthesis' in window)) { showToast('Text-to-speech tidak didukung browser ini'); return; }
+  const msg = new SpeechSynthesisUtterance('Selamat datang di Server MC Chat. Nikmati pengalaman chatting premium.');
+  msg.lang = 'id-ID';
+  speechSynthesis.speak(msg);
+  showToast('🔊 Membacakan...');
+}
+
 function editProfile() {
   const actor = getCommunityActor();
   if (!actor) return;
@@ -776,8 +877,8 @@ function editProfile() {
   if (hasApiBridge()) apiRequest('/api/community/auth', { method: 'POST', body: JSON.stringify({ bio: bio.trim().slice(0, 160) }) }).catch(() => {});
 }
 
-function changeAvatar() { showToast('Fitur ganti avatar akan segera hadir!'); }
-function changeBanner() { showToast('Fitur ganti banner akan segera hadir!'); }
+function changeAvatar() { showToast('📸 Klik avatar di profil untuk upload foto'); }
+function changeBanner() { showToast('🖼 Fitur banner akan segera hadir!'); }
 
 // ============================================================
 // DM & GROUP - Fixed with user IDs
