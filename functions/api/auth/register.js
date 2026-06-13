@@ -5,7 +5,8 @@ export async function onRequestPost({ request, env }) {
   const email = String(body.email || '').toLowerCase().trim();
   const username = String(body.username || body.name || '').trim();
   const password = String(body.password || '').trim();
-  const role = body.role === 'admin' ? 'admin' : 'member';
+  // Ignore client-supplied role; derive role from trusted allowlist in store
+  const role = 'member';
   const xuid = String(body.xuid || '').trim();
   const minecraftName = String(body.minecraft_name || body.minecraftName || '').trim();
 

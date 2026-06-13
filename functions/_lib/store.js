@@ -99,7 +99,8 @@ export function repairUserRole(user = {}) {
 }
 
 export async function loadState(env) {
-  const users = normalizeUserList(await readJsonStorage(env, 'users', memoryStore.users));
+  const storedUsers = await readJsonStorage(env, 'users', memoryStore.users);
+  const users = normalizeUserList(storedUsers);
   const sessions = await readJsonStorage(env, 'sessions', memoryStore.sessions);
   const online = await readJsonStorage(env, 'online', memoryStore.online);
   const seededUsers = users.length ? users : normalizeUserList([
@@ -123,6 +124,20 @@ export async function loadState(env) {
   if (!users.length && env?.SERVER_MC_KV) {
     memoryStore.users = seededUsers;
     await writeJsonStorage(env, 'users', seededUsers);
+  }
+  // If normalization changed any stored users (e.g. roles), write the repaired users back to KV
+  try {
+    if (env?.SERVER_MC_KV) {
+      const original = JSON.stringify(storedUsers || []);
+      const repaired = JSON.stringify(users || []);
+      if (original !== repaired) {
+        memoryStore.users = users;
+        await writeJsonStorage(env, 'users', users);
+      }
+    }
+  } catch (e) {
+    // ignore write errors, but keep memoryStore consistent
+    memoryStore.users = users;
   }
   return { users: seededUsers, sessions, online };
 }
