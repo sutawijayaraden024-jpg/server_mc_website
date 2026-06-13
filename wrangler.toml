@@ -6,5 +6,10 @@ binding = "SERVER_MC_KV"
 id = "004956cda69b49a7ad69d2af336aa7e5"
 preview_id = "004956cda69b49a7ad69d2af336aa7e5"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "server-mc-db"
+database_id = "dd41f0a1-c996-4334-afd5-f9e19064c693"
+
 [vars]
 WEBSITE_URL = "https://server-mc-website.pages.dev"
