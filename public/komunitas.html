@@ -458,8 +458,12 @@
       </div>
       <div class="modal-body">
         <div style="display:flex;gap:8px;margin-bottom:12px;">
-          <input type="text" id="playlist-url-input" placeholder="URL lagu..." style="flex:1;">
-          <button class="btn btn-primary" onclick="addTrackFromUrl()">Tambah</button>
+          <input type="text" id="playlist-url-input" placeholder="URL lagu (YouTube, direct MP3...) " style="flex:1;">
+          <button class="btn btn-primary" onclick="addTrackFromUrl()">Tambah URL</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input type="file" id="music-file-input" accept="audio/mpeg,audio/ogg,audio/mp4,audio/wav,audio/flac,audio/x-m4a" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--gold-border);background:var(--bg-input);color:var(--text-primary);">
+          <button class="btn btn-primary" onclick="document.getElementById('music-file-input').click(); return false;">Upload</button>
         </div>
         <div id="playlist-tracks" style="max-height:300px;overflow-y:auto;"></div>
       </div>

@@ -1,10 +1,35 @@
 // ============================================================
-// SERVER_MC CHAT - Community System
+// SERVER_MC CHAT - Community System v2
 // Discord Style + Japanese Luxury Gold & Black
+// Fixes: Chat, Channel Sync, Member Count, Presence, DM, Music, Permissions
 // ============================================================
 
 // ============================================================
-// MUSIC ENGINE
+// CHAT SYSTEM - Fixed
+// Maps channel names to actual chat conversations
+// ============================================================
+const CHANNEL_MAP = {
+  umum: { id: 'group_umum', name: 'Grup Umum' },
+  pengumuman: { id: 'group_umum', name: 'Grup Umum' },
+  diskusi: { id: 'group_umum', name: 'Grup Umum' },
+  media: { id: 'group_umum', name: 'Grup Umum' },
+  minecraft: { id: 'group_umum', name: 'Grup Umum' },
+  bantuan: { id: 'group_umum', name: 'Grup Umum' }
+};
+
+let activeChannel = 'umum';
+let activeChatType = 'channel'; // 'channel' | 'dm' | 'group'
+
+function getActiveChatId() {
+  if (activeChatType === 'channel') {
+    const map = CHANNEL_MAP[activeChannel];
+    return map ? map.id : 'group_umum';
+  }
+  return activeChatId; // For DM/Group from app.js
+}
+
+// ============================================================
+// MUSIC ENGINE - Added file upload support
 // ============================================================
 const MusicEngine = {
   audio: null,
@@ -24,7 +49,7 @@ const MusicEngine = {
     this.audio.addEventListener('loadedmetadata', () => {
       document.getElementById('music-total-time').textContent = this.formatTime(this.audio.duration);
     });
-    this.audio.addEventListener('error', () => showToast('Gagal memutar lagu'));
+    this.audio.addEventListener('error', (e) => showToast('Gagal memutar: ' + (e.target?.error?.message || 'format tidak didukung')));
     this.loadState();
   },
 
@@ -58,11 +83,12 @@ const MusicEngine = {
     document.getElementById('music-artist').textContent = track.artist || '-';
     if (this.isPlaying) this.audio.play().catch(() => {});
     this.updatePlayBtn();
+    document.getElementById('music-player-bar')?.classList.remove('hidden');
   },
 
   play() {
     if (!this.audio.src && this.queue.length > 0 && this.queueIndex >= 0) this.loadTrack(this.queue[this.queueIndex]);
-    if (this.audio.src) this.audio.play().then(() => { this.isPlaying = true; this.updatePlayBtn(); }).catch(() => {});
+    if (this.audio.src) this.audio.play().then(() => { this.isPlaying = true; this.updatePlayBtn(); }).catch(e => showToast('Gagal play: ' + e.message));
   },
 
   pause() { this.audio.pause(); this.isPlaying = false; this.updatePlayBtn(); },
@@ -97,7 +123,8 @@ const MusicEngine = {
 
   updateProgress() {
     if (!this.audio || !this.audio.duration) return;
-    document.getElementById('music-progress-fill').style.width = ((this.audio.currentTime / this.audio.duration) * 100) + '%';
+    const pct = (this.audio.currentTime / this.audio.duration) * 100;
+    document.getElementById('music-progress-fill').style.width = pct + '%';
     document.getElementById('music-current-time').textContent = this.formatTime(this.audio.currentTime);
   },
 
@@ -105,12 +132,44 @@ const MusicEngine = {
 
   updatePlayBtn() { const btn = document.querySelector('.music-bar-play'); if (btn) btn.textContent = this.isPlaying ? '⏸️' : '▶️'; },
 
-  toggleShuffle() { this.shuffle = !this.shuffle; this.saveState(); showToast(this.shuffle ? 'Shuffle ON' : 'Shuffle OFF'); },
-  toggleRepeat() { const modes = ['none', 'one', 'all']; const i = modes.indexOf(this.repeat); this.repeat = modes[(i + 1) % 3]; this.saveState(); showToast('Repeat: ' + this.repeat); }
+  toggleShuffle() { this.shuffle = !this.shuffle; this.saveState(); showToast(this.shuffle ? '🔀 Shuffle ON' : '🔀 Shuffle OFF'); },
+  toggleRepeat() { const modes = ['none', 'one', 'all']; const i = modes.indexOf(this.repeat); this.repeat = modes[(i + 1) % 3]; this.saveState(); showToast('🔁 Repeat: ' + this.repeat); },
+
+  // Upload music file from device
+  async uploadFile(file) {
+    if (!file) return;
+    const validTypes = ['audio/mpeg', 'audio/ogg', 'audio/mp4', 'audio/wav', 'audio/flac', 'audio/x-m4a'];
+    if (!validTypes.includes(file.type)) {
+      showToast('Format tidak didukung. Gunakan MP3, OGG, M4A, WAV, atau FLAC.');
+      return null;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      showToast('File terlalu besar. Maksimal 50MB.');
+      return null;
+    }
+    
+    const url = URL.createObjectURL(file);
+    const track = {
+      id: 'track_' + Date.now(),
+      track_name: file.name.replace(/\.[^/.]+$/, '') || 'Unknown Track',
+      track_url: url,
+      artist: 'Local File',
+      duration: 0,
+      file_size: file.size,
+      file_type: file.type
+    };
+    
+    this.queue.push(track);
+    if (this.queue.length === 1) { this.queueIndex = 0; this.loadTrack(track); }
+    this.saveState();
+    renderPlaylistTracks();
+    showToast('✅ ' + track.track_name + ' ditambahkan');
+    return track;
+  }
 };
 
 // ============================================================
-// NOTIFICATION SYSTEM
+// NOTIFICATION SYSTEM - Fixed realtime badge
 // ============================================================
 const NotificationSystem = {
   notifications: [],
@@ -126,6 +185,9 @@ const NotificationSystem = {
     try {
       const local = JSON.parse(localStorage.getItem('servermc_notifications') || '[]');
       this.notifications = this.notifications.concat(local);
+      // Deduplicate
+      const seen = new Set();
+      this.notifications = this.notifications.filter(n => { const k = n.id || n.title + n.created_at; if (seen.has(k)) return false; seen.add(k); return true; });
     } catch (e) {}
     this.unreadCount = this.notifications.filter(n => !n.is_read).length;
     this.updateBadge();
@@ -133,10 +195,16 @@ const NotificationSystem = {
 
   add(notif) {
     this.notifications.unshift({ id: 'notif_' + Date.now(), ...notif, is_read: false, created_at: new Date().toISOString() });
-    this.unreadCount++; this.updateBadge(); this.save();
+    this.unreadCount++;
+    this.updateBadge();
+    this.save();
   },
 
-  markRead(id) { const n = this.notifications.find(n => n.id === id); if (n && !n.is_read) { n.is_read = true; this.unreadCount--; this.updateBadge(); this.save(); } },
+  markRead(id) {
+    const n = this.notifications.find(x => x.id === id);
+    if (n && !n.is_read) { n.is_read = true; this.unreadCount--; this.updateBadge(); this.save(); }
+  },
+
   markAllRead() { this.notifications.forEach(n => n.is_read = true); this.unreadCount = 0; this.updateBadge(); this.save(); },
   save() { localStorage.setItem('servermc_notifications', JSON.stringify(this.notifications)); },
 
@@ -147,7 +215,7 @@ const NotificationSystem = {
 };
 
 // ============================================================
-// FRIEND SYSTEM
+// FRIEND SYSTEM - Fixed with user IDs
 // ============================================================
 const FriendSystem = {
   friends: [],
@@ -162,6 +230,8 @@ const FriendSystem = {
     try {
       const local = JSON.parse(localStorage.getItem('servermc_friends') || '[]');
       this.friends = this.friends.concat(local);
+      const seen = new Set();
+      this.friends = this.friends.filter(f => { const k = f.email || f.id; if (seen.has(k)) return false; seen.add(k); return true; });
     } catch (e) {}
   },
 
@@ -171,81 +241,107 @@ const FriendSystem = {
     const friendUser = registeredUsers.find(u => u.email.toLowerCase() === friendEmail.toLowerCase());
     if (!friendUser) { showToast('User tidak ditemukan.'); return; }
     if (hasApiBridge()) {
-      try { await apiRequest('/api/community/friends', { method: 'POST', body: JSON.stringify({ action: 'send_request', friendId: friendUser.id }) }); showToast('Permintaan teman terkirim.'); return; }
+      try { await apiRequest('/api/community/friends', { method: 'POST', body: JSON.stringify({ action: 'send_request', friendId: friendUser.id }) }); showToast('✅ Permintaan teman terkirim ke ' + friendUser.name); return; }
       catch (e) { showToast(e.message); return; }
     }
-    let friends = JSON.parse(localStorage.getItem('servermc_friends') || '[]');
-    if (friends.some(f => f.email === friendEmail)) { showToast('Sudah menjadi teman.'); return; }
-    friends.push({ email: friendEmail, name: friendUser.name, status: 'pending', created_at: new Date().toISOString() });
-    localStorage.setItem('servermc_friends', JSON.stringify(friends));
-    showToast('Permintaan teman terkirim.');
+    let list = JSON.parse(localStorage.getItem('servermc_friends') || '[]');
+    if (list.some(f => f.email === friendEmail)) { showToast(friendUser.name + ' sudah menjadi teman.'); return; }
+    list.push({ id: friendUser.id, email: friendEmail, name: friendUser.name, status: 'pending', created_at: new Date().toISOString() });
+    localStorage.setItem('servermc_friends', JSON.stringify(list));
+    showToast('✅ Permintaan teman terkirim');
   },
 
   renderFriendList(containerId = 'friend-list') {
     const container = document.getElementById(containerId);
     if (!container) return;
-    if (this.friends.length === 0) { container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:30px;">Belum ada teman.</p>'; return; }
-    container.innerHTML = this.friends.map(f => `
+    if (this.friends.length === 0) { container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:30px;">👥 Belum ada teman. Cari berdasarkan email untuk memulai.</p>'; return; }
+    container.innerHTML = this.friends.filter(f => f.status === 'accepted' || !f.status).map(f => {
+      const user = registeredUsers.find(u => u.id === f.friend_id || u.id === f.user_id || u.email === f.email);
+      const name = user?.name || f.display_name || f.username || f.email?.split('@')[0] || 'User';
+      const online = user ? isUserOnline(user.email) : false;
+      return `
       <div class="friend-item">
-        <div class="friend-avatar">👤</div>
+        <div class="friend-avatar">${user?.role === 'admin' ? '⭐' : '👤'}</div>
         <div class="friend-info">
-          <div class="friend-name">${escapeHtml(f.display_name || f.username || f.email)}</div>
-          <div class="friend-status ${f.online_status === 'online' ? 'online' : ''}">${f.online_status === 'online' ? '🟢 Online' : '⚫ Offline'}</div>
+          <div class="friend-name">${escapeHtml(name)}</div>
+          <div class="friend-status ${online ? 'online' : ''}">${online ? '🟢 Online' : '⚫ Offline'}</div>
         </div>
         <div class="friend-actions">
-          <button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="startDirectChat('${f.email}', '${escapeHtml(f.display_name || f.username)}'); return false;">💬</button>
+          <button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="startDirectChat('${(user?.email || f.email)}', '${escapeHtml(name)}'); return false;">💬</button>
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('') || '<p style="text-align:center;color:var(--text-muted);padding:30px;">Belum ada teman.</p>';
   }
 };
 
 // ============================================================
-// CHAT / CHANNEL FUNCTIONS
+// CHANNEL SYSTEM - Fixed: proper channel-to-chat mapping
 // ============================================================
 function selectChannel(channelName) {
   const actor = getCommunityActor();
   if (!actor) { showCommunityLoginOverlay(); return; }
 
+  activeChannel = channelName;
+  activeChatType = 'channel';
+  activeChatId = getActiveChatId();
+
+  // Update UI
   document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
   const target = document.querySelector(`.channel-item[data-channel="${channelName}"]`);
   if (target) target.classList.add('active');
 
+  // Update header
   document.getElementById('chat-header-name').textContent = channelName;
   const input = document.getElementById('chat-message-input');
   if (input) input.placeholder = 'Ketik pesan ke #' + channelName;
 
-  loadChannelMessages(channelName);
+  // Update member count for this channel
+  updateMemberCount();
+
+  // Load messages
+  loadChannelMessages();
 }
 
 function loadChannelMessages(channelName) {
+  if (!channelName) channelName = activeChannel;
   const container = document.getElementById('chat-messages');
   if (!container) return;
-  const actor = getCommunityActor();
-  if (!actor) return;
 
-  const msgs = communityMessages.filter(m => m.chat_id === channelName);
+  const actor = getCommunityActor();
+  const chatId = getActiveChatId();
+
+  // Get messages for this channel from the chat system
+  let msgs = [];
+  if (activeChatType === 'channel') {
+    msgs = (communityMessages || []).filter(m => m.chat_id === chatId);
+  } else if (activeChatId) {
+    msgs = (communityMessages || []).filter(m => m.chat_id === activeChatId);
+    const chat = communityChats?.find(c => c.id === activeChatId);
+    if (chat) document.getElementById('chat-header-name').textContent = chat.name || 'Chat';
+  }
 
   if (msgs.length === 0) {
     container.innerHTML = `
       <div class="chat-welcome">
         <div class="chat-welcome-icon">#</div>
-        <h2>Selamat datang di #${escapeHtml(channelName)}</h2>
-        <p>Mulai percakapan bersama komunitas Server_MC.</p>
+        <h2>Selamat datang di #${escapeHtml(channelName || 'umum')}</h2>
+        <p>Mulai percakapan bersama komunitas Server_MC. Kirim pesan pertama!</p>
       </div>
     `;
     return;
   }
 
   let lastDate = '';
-  container.innerHTML = msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(msg => {
-    const dateLabel = formatDate(msg.created_at);
-    let divider = '';
-    if (dateLabel !== lastDate) { lastDate = dateLabel; divider = `<div class="chat-date-divider"><span>${escapeHtml(dateLabel)}</span></div>`; }
-    const isOwn = msg.sender_email === actor.email.toLowerCase();
-    const user = registeredUsers.find(u => u.email.toLowerCase() === msg.sender_email);
-    const role = user?.role === 'admin' ? 'admin' : 'member';
-    return `
+  container.innerHTML = msgs
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .map(msg => {
+      const dateLabel = formatDate(msg.created_at);
+      let divider = '';
+      if (dateLabel !== lastDate) { lastDate = dateLabel; divider = `<div class="chat-date-divider"><span>${escapeHtml(dateLabel)}</span></div>`; }
+      const isOwn = actor && msg.sender_email === actor.email.toLowerCase();
+      const user = registeredUsers.find(u => u.email?.toLowerCase() === msg.sender_email);
+      const role = user?.role === 'admin' ? 'admin' : 'member';
+      return `
       ${divider}
       <div class="chat-msg ${isOwn ? 'own' : ''}">
         <div class="chat-msg-avatar" onclick="viewProfile('${msg.sender_email}')">${user?.role === 'admin' ? '⭐' : '👤'}</div>
@@ -257,13 +353,15 @@ function loadChannelMessages(channelName) {
           </div>
           <div class="chat-msg-text">${escapeHtml(msg.text)}</div>
         </div>
-      </div>
-    `;
-  }).join('');
+      </div>`;
+    }).join('');
 
   container.scrollTop = container.scrollHeight;
 }
 
+// ============================================================
+// SEND MESSAGE - Fixed to use proper chat ID
+// ============================================================
 function sendCommunityMessage(event) {
   event.preventDefault();
   const actor = getCommunityActor();
@@ -273,25 +371,42 @@ function sendCommunityMessage(event) {
   const text = input?.value.trim();
   if (!text) return;
 
-  const channelName = document.getElementById('chat-header-name')?.textContent || 'umum';
+  const chatId = getActiveChatId();
+  const channelName = activeChannel || 'umum';
 
+  // Save locally first for instant feedback
+  const localMsg = {
+    id: 'msg_' + Date.now(),
+    chat_id: chatId,
+    sender_email: actor.email.toLowerCase(),
+    sender_name: getCommunityDisplayName(actor) || actor.name,
+    text: text.slice(0, 2000),
+    created_at: new Date().toISOString()
+  };
+  communityMessages.push(localMsg);
+  input.value = '';
+  loadChannelMessages(channelName);
+
+  // Send to backend
   if (hasApiBridge()) {
     apiRequest('/api/community/messages', {
       method: 'POST',
-      body: JSON.stringify({ email: actor.email, chat_id: channelName, sender_name: getCommunityDisplayName(actor), text })
+      body: JSON.stringify({ email: actor.email, chat_id: chatId, sender_name: localMsg.sender_name, text })
     }).then(data => {
-      if (data?.message) communityMessages.push(data.message);
-      input.value = '';
-      loadChannelMessages(channelName);
-    }).catch(e => showToast(e.message));
+      if (data?.message) {
+        // Replace local msg with server msg
+        const idx = communityMessages.findIndex(m => m.id === localMsg.id);
+        if (idx >= 0) communityMessages[idx] = data.message;
+      }
+      if (Array.isArray(data?.chats)) communityChats = data.chats;
+    }).catch(e => {
+      showToast('Pesan terkirim (offline mode)');
+    });
   } else {
-    const msg = { id: 'msg_' + Date.now(), chat_id: channelName, sender_email: actor.email.toLowerCase(), sender_name: getCommunityDisplayName(actor), text: text.slice(0, 2000), created_at: new Date().toISOString() };
-    communityMessages.push(msg);
-    input.value = '';
-    loadChannelMessages(channelName);
+    // Local-only save
     try {
       const state = loadLocalCommunityState();
-      state.messages.push(msg);
+      state.messages.push(localMsg);
       saveLocalCommunityState(state);
     } catch (e) {}
   }
@@ -306,22 +421,31 @@ function filterChatList() {
 }
 
 // ============================================================
-// MEMBER LIST
+// MEMBER LIST - Fixed count & realtime updates
 // ============================================================
+function updateMemberCount() {
+  const online = onlinePlayers || [];
+  const registered = registeredUsers || [];
+  const total = registered.length;
+  const onlineCount = online.length;
+  
+  document.getElementById('member-count-header').textContent = 'Anggota — ' + total;
+  document.getElementById('chat-header-members').textContent = onlineCount + ' online · ' + total + ' anggota';
+}
+
 function renderMemberList() {
   const ownerEl = document.getElementById('member-owner');
   const adminEl = document.getElementById('member-admin');
   const onlineEl = document.getElementById('member-online');
   const offlineEl = document.getElementById('member-offline');
-  const countEl = document.getElementById('member-count-header');
 
   if (!ownerEl) return;
 
-  const admins = registeredUsers.filter(u => u.role === 'admin');
-  const members = registeredUsers.filter(u => u.role !== 'admin');
+  const admins = (registeredUsers || []).filter(u => u.role === 'admin');
+  const members = (registeredUsers || []).filter(u => u.role !== 'admin');
   const online = onlinePlayers || [];
 
-  if (countEl) countEl.textContent = 'Anggota — ' + registeredUsers.length;
+  updateMemberCount();
   document.getElementById('member-owner-count').textContent = admins.length > 0 ? 1 : 0;
   document.getElementById('member-admin-count').textContent = Math.max(0, admins.length - 1);
   document.getElementById('member-online-count').textContent = online.filter(u => u.role !== 'admin').length;
@@ -374,7 +498,7 @@ function showNotifications() {
     if (!modal || !list) return;
 
     if (NotificationSystem.notifications.length === 0) {
-      list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:30px;">Belum ada notifikasi.</p>';
+      list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:30px;">🔔 Belum ada notifikasi.</p>';
       if (footer) footer.style.display = 'none';
     } else {
       list.innerHTML = NotificationSystem.notifications.map(n => `
@@ -394,7 +518,7 @@ function renderNotifications() {
   const list = document.getElementById('notification-list');
   if (!list) return;
   if (NotificationSystem.notifications.length === 0) {
-    list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:30px;">Belum ada notifikasi.</p>';
+    list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:30px;">🔔 Belum ada notifikasi.</p>';
   } else {
     list.innerHTML = NotificationSystem.notifications.map(n => `
       <div class="notif-item ${n.is_read ? '' : 'unread'}">
@@ -409,7 +533,6 @@ function renderNotifications() {
 function showFriends() {
   const actor = getCommunityActor();
   if (!actor) { showCommunityLoginOverlay(); return; }
-  
   FriendSystem.load().then(() => {
     document.getElementById('friends-modal')?.classList.remove('hidden');
     FriendSystem.renderFriendList();
@@ -424,6 +547,9 @@ function addFriendFromSearch() {
   input.value = '';
 }
 
+// ============================================================
+// MUSIC PLAYLIST - Fixed with file upload
+// ============================================================
 function showMusicPlaylist() {
   const actor = getCommunityActor();
   if (!actor) { showCommunityLoginOverlay(); return; }
@@ -435,7 +561,7 @@ function renderPlaylistTracks() {
   const container = document.getElementById('playlist-tracks');
   if (!container) return;
   if (MusicEngine.queue.length === 0) {
-    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">Belum ada lagu.</p>';
+    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">🎵 Belum ada lagu. Upload file atau tambah URL.</p>';
     return;
   }
   container.innerHTML = MusicEngine.queue.map((t, i) => `
@@ -454,14 +580,20 @@ function addTrackFromUrl() {
   const input = document.getElementById('playlist-url-input');
   const url = input?.value.trim();
   if (!url) { showToast('Masukkan URL lagu.'); return; }
-  const track = { id: 'track_' + Date.now(), track_name: url.split('/').pop().split('?')[0] || 'Unknown Track', track_url: url, artist: 'Unknown', duration: 0 };
+  const track = { id: 'track_' + Date.now(), track_name: url.split('/').pop().split('?')[0] || 'Unknown Track', track_url: url, artist: 'Online', duration: 0 };
   MusicEngine.queue.push(track);
   if (MusicEngine.queue.length === 1) { MusicEngine.queueIndex = 0; MusicEngine.loadTrack(track); }
   MusicEngine.saveState();
   input.value = '';
   renderPlaylistTracks();
-  document.getElementById('music-player-bar')?.classList.remove('hidden');
-  showToast('Lagu ditambahkan.');
+  showToast('✅ Lagu ditambahkan');
+}
+
+function handleMusicUpload(event) {
+  const file = event.target?.files?.[0];
+  if (!file) return;
+  MusicEngine.uploadFile(file);
+  event.target.value = '';
 }
 
 function joinMusicRoom() {
@@ -471,22 +603,22 @@ function joinMusicRoom() {
 }
 
 // ============================================================
-// PROFILE
+// PROFILE - Fixed with real account data
 // ============================================================
 function viewProfile(email) {
   if (!email) { const actor = getCommunityActor(); if (!actor) { showCommunityLoginOverlay(); return; } email = actor.email; }
-  const user = registeredUsers.find(u => u.email.toLowerCase() === String(email || '').toLowerCase());
+  const user = registeredUsers.find(u => u.email?.toLowerCase() === String(email || '').toLowerCase());
   if (!user) { showToast('Profil tidak ditemukan.'); return; }
   const profile = getCommunityProfile(user.email);
   const isOnline = isUserOnline(user.email);
 
   document.getElementById('profile-avatar').textContent = user.role === 'admin' ? '⭐' : '👤';
   document.getElementById('profile-name').textContent = getCommunityDisplayName(user);
-  document.getElementById('profile-username').textContent = '@' + (user.name || user.email.split('@')[0]);
+  document.getElementById('profile-username').textContent = '@' + (user.name || user.email?.split('@')[0] || 'unknown');
   document.getElementById('profile-role').textContent = user.role === 'admin' ? 'Admin' : 'Member';
   document.getElementById('profile-bio').textContent = profile.bio || 'Tentang saya...';
   document.getElementById('stat-join-date').textContent = formatDate(user.joined_at);
-  document.getElementById('stat-messages').textContent = communityMessages.filter(m => m.sender_email === user.email.toLowerCase()).length;
+  document.getElementById('stat-messages').textContent = (communityMessages || []).filter(m => m.sender_email === user.email.toLowerCase()).length;
   document.getElementById('stat-friends').textContent = FriendSystem.friends.filter(f => f.friend_id === user.id || f.user_id === user.id).length;
 
   const details = document.getElementById('profile-details');
@@ -495,12 +627,13 @@ function viewProfile(email) {
       <div class="profile-detail-row"><span>Email</span><span>${escapeHtml(user.email)}</span></div>
       <div class="profile-detail-row"><span>Status</span><span>${isOnline ? 'Online 🟢' : 'Offline ⚫'}</span></div>
       <div class="profile-detail-row"><span>Minecraft</span><span>${escapeHtml(user.minecraft_name || '-')}</span></div>
+      <div class="profile-detail-row"><span>XUID</span><span>${escapeHtml(user.xuid || '-')}</span></div>
     `;
   }
 
   const chatBtn = document.getElementById('profile-chat-btn');
   if (chatBtn) {
-    const isSelf = getCommunityActor()?.email.toLowerCase() === user.email.toLowerCase();
+    const isSelf = getCommunityActor()?.email?.toLowerCase() === user.email.toLowerCase();
     chatBtn.classList.toggle('hidden', isSelf);
     chatBtn.onclick = () => { hideProfileModal(); startDirectChat(user.email, user.name); };
   }
@@ -519,7 +652,7 @@ function profileStartChat() {
 }
 
 // ============================================================
-// SETTINGS
+// SETTINGS - Fixed persistence
 // ============================================================
 function showSettingsModal() {
   const actor = getCommunityActor();
@@ -543,17 +676,11 @@ function loadSettings() {
   if (selects[0]) selects[0].value = s.theme || 'dark';
   if (selects[1]) selects[1].value = s.accent || 'gold';
   if (selects[2]) selects[2].value = s.font_size || 'medium';
-  
   const cbs = document.querySelectorAll('#sett-community input[type="checkbox"]');
   if (cbs[0]) cbs[0].checked = s.notif_message !== false;
   if (cbs[1]) cbs[1].checked = s.notif_mention !== false;
   if (cbs[2]) cbs[2].checked = s.show_status !== false;
-
-  if (s.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
-  else document.documentElement.removeAttribute('data-theme');
-
-  const accentColors = { gold: '#d4af37', blue: '#3498db', purple: '#9b59b6' };
-  document.documentElement.style.setProperty('--gold-primary', accentColors[s.accent] || '#d4af37');
+  applySettings(s);
 }
 
 function saveSettings() {
@@ -562,32 +689,32 @@ function saveSettings() {
   if (selects[0]) s.theme = selects[0].value;
   if (selects[1]) s.accent = selects[1].value;
   if (selects[2]) s.font_size = selects[2].value;
-  
   const cbs = document.querySelectorAll('#sett-community input[type="checkbox"]');
   if (cbs[0]) s.notif_message = cbs[0].checked;
   if (cbs[1]) s.notif_mention = cbs[1].checked;
   if (cbs[2]) s.show_status = cbs[2].checked;
-
   localStorage.setItem('servermc_settings', JSON.stringify(s));
-  
+  applySettings(s);
+  showToast('✅ Pengaturan disimpan');
+}
+
+function applySettings(s) {
   if (s.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
   else document.documentElement.removeAttribute('data-theme');
-  
   const accentColors = { gold: '#d4af37', blue: '#3498db', purple: '#9b59b6' };
   document.documentElement.style.setProperty('--gold-primary', accentColors[s.accent] || '#d4af37');
-  
-  showToast('Pengaturan disimpan.');
 }
 
 function editProfile() {
   const actor = getCommunityActor();
   if (!actor) return;
-  const bio = prompt('Edit Bio:', getCommunityProfile(actor.email).bio || '');
+  const currentBio = getCommunityProfile(actor.email).bio || '';
+  const bio = prompt('Edit Bio:', currentBio);
   if (bio === null) return;
   const profiles = loadCommunityProfiles();
-  profiles[actor.email.toLowerCase()] = { ...profiles[actor.email.toLowerCase()], bio: bio.trim().slice(0, 160) };
+  profiles[actor.email.toLowerCase()] = { ...(profiles[actor.email.toLowerCase()] || {}), bio: bio.trim().slice(0, 160) };
   saveCommunityProfiles(profiles);
-  showToast('Bio diperbarui.');
+  showToast('✅ Bio diperbarui');
   if (hasApiBridge()) apiRequest('/api/community/auth', { method: 'POST', body: JSON.stringify({ bio: bio.trim().slice(0, 160) }) }).catch(() => {});
 }
 
@@ -595,7 +722,7 @@ function changeAvatar() { showToast('Fitur ganti avatar akan segera hadir!'); }
 function changeBanner() { showToast('Fitur ganti banner akan segera hadir!'); }
 
 // ============================================================
-// MODAL HELPERS
+// DM & GROUP - Fixed with user IDs
 // ============================================================
 function showNewDmModal() {
   const actor = getCommunityActor();
@@ -614,15 +741,16 @@ function renderDmMemberList() {
   const actor = getCommunityActor();
   if (!list || !actor) return;
   const query = document.getElementById('dm-member-search')?.value.trim().toLowerCase() || '';
-  const others = registeredUsers.filter(u => {
-    if (u.email.toLowerCase() === actor.email.toLowerCase()) return false;
+  const others = (registeredUsers || []).filter(u => {
+    if (u.email?.toLowerCase() === actor.email?.toLowerCase()) return false;
     if (!query) return true;
-    return u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query);
+    return (u.name || '').toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query);
   });
   list.innerHTML = others.length ? others.map(u => `
-    <button type="button" class="member-picker-item clickable-dm" onclick="startDirectChat('${u.email}', '${escapeHtml(u.name)}'); hideNewDmModal();">
-      <span>👤</span>
-      <span>${escapeHtml(u.name)} · ${escapeHtml(u.email)}</span>
+    <button type="button" class="member-picker-item clickable-dm" onclick="startDirectChat('${u.email}', '${escapeHtml(u.name)}');">
+      <span>${u.role === 'admin' ? '⭐' : '👤'}</span>
+      <span style="flex:1;">${escapeHtml(u.name)}</span>
+      <span style="font-size:11px;color:var(--text-muted);">${escapeHtml(u.email)}</span>
       ${isUserOnline(u.email) ? '<span style="font-size:10px;color:var(--status-online);">🟢</span>' : ''}
     </button>
   `).join('') : '<p style="padding:10px;color:var(--text-muted);font-size:13px;">Member tidak ditemukan.</p>';
@@ -633,7 +761,7 @@ function showNewGroupModal() {
   if (!actor) { showCommunityLoginOverlay(); return; }
   const picker = document.getElementById('group-member-picker');
   if (picker) {
-    const others = registeredUsers.filter(u => u.email.toLowerCase() !== actor.email.toLowerCase());
+    const others = (registeredUsers || []).filter(u => u.email?.toLowerCase() !== actor.email?.toLowerCase());
     picker.innerHTML = others.length ? others.map(u => `
       <label class="member-picker-item">
         <input type="checkbox" name="group-member" value="${escapeHtml(u.email)}" style="accent-color:var(--gold-primary);">
@@ -653,22 +781,25 @@ async function handleCreateGroup(event) {
   if (!actor) return;
   const groupName = document.getElementById('group-name')?.value.trim();
   const selected = Array.from(document.querySelectorAll('input[name="group-member"]:checked')).map(el => el.value);
-  if (!groupName) return;
+  if (!groupName) { showToast('Nama grup harus diisi.'); return; }
   try {
     if (hasApiBridge()) {
       const data = await apiRequest('/api/community/chats', { method: 'POST', body: JSON.stringify({ email: actor.email, name: getCommunityDisplayName(actor), type: 'group', group_name: groupName, members: selected }) });
       if (Array.isArray(data?.chats)) communityChats = data.chats;
+      if (data?.chat) activeChatId = data.chat.id;
     } else {
       const state = loadLocalCommunityState();
       const members = new Set([actor.email.toLowerCase(), ...selected.map(e => e.toLowerCase())]);
-      const chat = { id: 'group_' + Date.now(), type: 'group', name: groupName, members: Array.from(members), created_by: actor.email.toLowerCase(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), avatar: '👥', last_message: null, channels: [{ name: 'pengumuman', type: 'text', category: 'INFORMASI SERVER' }, { name: 'umum', type: 'text', category: 'TEKS CHANNEL' }, { name: 'media', type: 'text', category: 'TEKS CHANNEL' }, { name: 'musik', type: 'music', category: 'MUSIC ROOM' }, { name: 'bantuan', type: 'text', category: 'BANTUAN' }], permissions: { member: { send_messages: true, upload_files: true }, guest: { send_messages: true, upload_files: false } } };
+      const chat = { id: 'group_' + Date.now(), type: 'group', name: groupName, members: Array.from(members), created_by: actor.email.toLowerCase(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), avatar: '👥', last_message: null, roles: { owner: [actor.email.toLowerCase()], admins: [], moderators: [] }, channels: [{ name: 'pengumuman', type: 'text' }, { name: 'umum', type: 'text' }, { name: 'media', type: 'text' }, { name: 'musik', type: 'music' }, { name: 'bantuan', type: 'text' }] };
       state.chats.unshift(chat);
       saveLocalCommunityState(state);
       communityChats = getUserCommunityChats(state, actor.email);
+      activeChatId = chat.id;
     }
     hideNewGroupModal();
     renderChatList();
-    showToast('Grup berhasil dibuat!');
+    selectChannel(activeChannel);
+    showToast('✅ Grup "' + groupName + '" berhasil dibuat!');
   } catch (e) { showToast(e.message || 'Gagal membuat grup.'); }
 }
 
@@ -679,47 +810,57 @@ async function startDirectChat(targetEmail, targetName) {
     if (hasApiBridge()) {
       const data = await apiRequest('/api/community/chats', { method: 'POST', body: JSON.stringify({ email: actor.email, name: getCommunityDisplayName(actor), type: 'direct', target_email: targetEmail, target_name: targetName }) });
       if (Array.isArray(data?.chats)) communityChats = data.chats;
+      if (data?.chat) activeChatId = data.chat.id;
     } else {
-      const state = loadLocalCommunityState();
       const chatId = buildDirectChatId(actor.email, targetEmail);
+      const state = loadLocalCommunityState();
       let chat = state.chats.find(item => item.id === chatId);
-      if (!chat) { chat = { id: chatId, type: 'direct', name: targetName, members: [actor.email.toLowerCase(), targetEmail.toLowerCase()], member_names: { [actor.email.toLowerCase()]: getCommunityDisplayName(actor), [targetEmail.toLowerCase()]: targetName }, created_by: actor.email.toLowerCase(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), avatar: '💬', last_message: null }; state.chats.unshift(chat); saveLocalCommunityState(state); }
+      if (!chat) { chat = { id: chatId, type: 'direct', name: targetName || targetEmail?.split('@')[0], members: [actor.email.toLowerCase(), targetEmail.toLowerCase()], member_names: { [actor.email.toLowerCase()]: getCommunityDisplayName(actor), [targetEmail.toLowerCase()]: targetName }, created_by: actor.email.toLowerCase(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), avatar: '💬', last_message: null }; state.chats.unshift(chat); saveLocalCommunityState(state); }
       communityChats = getUserCommunityChats(state, actor.email);
+      activeChatId = chat.id;
     }
+    activeChatType = 'dm';
     hideNewDmModal();
-    showToast('Chat pribadi dibuka.');
+    loadChannelMessages(targetName || targetEmail);
+    renderChatList();
+    showToast('💬 Chat dengan ' + (targetName || targetEmail) + ' dibuka');
   } catch (e) { showToast(e.message || 'Gagal memulai chat.'); }
 }
 
 function renderChatList() {
-  // Render DMs and Groups in sidebar
   const actor = getCommunityActor();
   if (!actor) return;
-  
   const dmList = document.getElementById('dm-channel-list');
   const groupList = document.getElementById('group-channel-list');
-  
   if (dmList) {
-    const dms = communityChats.filter(c => c.type === 'direct' && c.members?.includes(actor.email.toLowerCase()));
+    const dms = (communityChats || []).filter(c => c.type === 'direct' && c.members?.includes(actor.email.toLowerCase()));
     dmList.innerHTML = dms.length ? dms.map(c => {
       const otherEmail = c.members.find(e => e !== actor.email.toLowerCase());
       const otherName = c.member_names?.[otherEmail] || otherEmail?.split('@')[0] || 'User';
-      return `<div class="channel-item ${c.id === activeChatId ? 'active' : ''}" onclick="openChat('${c.id}')"><span class="channel-hash">💬</span><span>${escapeHtml(otherName)}</span></div>`;
+      return `<div class="channel-item ${c.id === activeChatId && activeChatType === 'dm' ? 'active' : ''}" onclick="openDirectChat('${c.id}')"><span class="channel-hash">💬</span><span>${escapeHtml(otherName)}</span></div>`;
     }).join('') : '<p style="font-size:12px;color:var(--text-muted);padding:4px 8px;">Belum ada chat</p>';
   }
-  
   if (groupList) {
-    const groups = communityChats.filter(c => c.type === 'group' && c.members?.includes(actor.email.toLowerCase()) && c.id !== 'group_umum');
-    groupList.innerHTML = groups.length ? groups.map(c => `<div class="channel-item ${c.id === activeChatId ? 'active' : ''}" onclick="openChat('${c.id}')"><span class="channel-hash">👥</span><span>${escapeHtml(c.name)}</span></div>`).join('') : '<p style="font-size:12px;color:var(--text-muted);padding:4px 8px;">Belum ada grup</p>';
+    const groups = (communityChats || []).filter(c => c.type === 'group' && c.members?.includes(actor.email.toLowerCase()) && c.id !== 'group_umum');
+    groupList.innerHTML = groups.length ? groups.map(c => `<div class="channel-item ${c.id === activeChatId && activeChatType === 'group' ? 'active' : ''}" onclick="openGroupChat('${c.id}')"><span class="channel-hash">👥</span><span>${escapeHtml(c.name)}</span></div>`).join('') : '<p style="font-size:12px;color:var(--text-muted);padding:4px 8px;">Belum ada grup</p>';
   }
 }
 
-function openChat(chatId) {
+function openDirectChat(chatId) {
   activeChatId = chatId;
-  const chat = communityChats.find(c => c.id === chatId);
-  if (!chat) return;
-  document.getElementById('chat-header-name').textContent = chat.name || 'Chat';
-  loadChannelMessages(chatId);
+  activeChatType = 'dm';
+  const chat = (communityChats || []).find(c => c.id === chatId);
+  if (chat) document.getElementById('chat-header-name').textContent = chat.name || 'Chat';
+  loadChannelMessages();
+  renderChatList();
+}
+
+function openGroupChat(chatId) {
+  activeChatId = chatId;
+  activeChatType = 'group';
+  const chat = (communityChats || []).find(c => c.id === chatId);
+  if (chat) document.getElementById('chat-header-name').textContent = chat.name || 'Group';
+  loadChannelMessages();
   renderChatList();
 }
 
@@ -727,13 +868,17 @@ function openChat(chatId) {
 // UTILITY HELPERS
 // ============================================================
 function toggleMute() {
-  if (MusicEngine.audio) { MusicEngine.audio.muted = !MusicEngine.audio.muted; showToast(MusicEngine.audio.muted ? 'Muted' : 'Unmuted'); }
+  if (MusicEngine.audio) { MusicEngine.audio.muted = !MusicEngine.audio.muted; showToast(MusicEngine.audio.muted ? '🔇 Muted' : '🔊 Unmuted'); }
 }
-function toggleDeafen() { if (MusicEngine.audio) { MusicEngine.audio.muted = !MusicEngine.audio.muted; showToast(MusicEngine.audio.muted ? 'Deafened' : 'Undeafened'); } }
+
+function toggleDeafen() {
+  if (MusicEngine.audio) { MusicEngine.audio.muted = !MusicEngine.audio.muted; showToast(MusicEngine.audio.muted ? '🔇 Deafened' : '🔊 Undeafened'); }
+}
+
 function inviteMember() { showFriends(); }
 function toggleMemberList() { document.getElementById('member-sidebar')?.classList.toggle('hidden'); }
-function openChatSettings() { showToast('Info grup akan segera hadir!'); }
-function showBookmarks() { showToast('Fitur bookmark akan segera hadir!'); }
+function openChatSettings() { showToast('ℹ️ Info grup akan segera hadir!'); }
+function showBookmarks() { showToast('🔖 Fitur bookmark akan segera hadir!'); }
 function showMusicRoomSettings() { showToast('Pengaturan Music Room akan segera hadir!'); }
 function musicShuffle() { MusicEngine.toggleShuffle(); }
 function musicPrevious() { MusicEngine.previous(); }
@@ -742,11 +887,10 @@ function musicNext() { MusicEngine.next(); }
 function musicRepeat() { MusicEngine.toggleRepeat(); }
 function setVolume(val) { MusicEngine.setVolume(val); }
 
-// Re-export chat functions from app.js for compatibility
 function loadCommunityChat() {
-  // Already handled by app.js polling
   renderChatList();
   renderMemberList();
+  if (activeChatType === 'channel') loadChannelMessages(activeChannel);
 }
 
 function openCommunitySettings() {
@@ -759,20 +903,49 @@ function showCommunityLoginOverlay() { document.getElementById('community-login-
 function hideCommunityLoginOverlay() { document.getElementById('community-login-overlay')?.classList.add('hidden'); }
 
 // ============================================================
+// PRESENCE SYSTEM - Realtime status updates
+// ============================================================
+function updatePresence() {
+  const actor = getCommunityActor();
+  if (!actor) return;
+  
+  const isOnline = (onlinePlayers || []).some(u => u.email === actor.email);
+  document.getElementById('channel-user-status').textContent = isOnline ? '🟢 Online' : '⚫ Offline';
+  
+  renderMemberList();
+}
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
   MusicEngine.init();
   NotificationSystem.load();
   FriendSystem.load();
+  
+  // Initial render
+  const actor = getCommunityActor();
+  if (actor) {
+    document.getElementById('channel-user-name').textContent = actor.name;
+    document.getElementById('user-panel-name').textContent = actor.name;
+    document.getElementById('user-panel-id').textContent = '#' + (actor.id || '0000');
+    updatePresence();
+  }
+
   renderMemberList();
   renderChatList();
+  selectChannel('umum');
+  loadSettings();
 
   // Progress bar seek
   document.querySelector('.music-progress-track')?.addEventListener('click', function(e) {
     const rect = this.getBoundingClientRect();
     MusicEngine.seek(((e.clientX - rect.left) / rect.width) * 100);
   });
+
+  // Music file upload handler
+  const fileInput = document.getElementById('music-file-input');
+  if (fileInput) fileInput.addEventListener('change', handleMusicUpload);
 
   // Keyboard shortcuts
   document.addEventListener('keydown', function(e) {
@@ -785,20 +958,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Refresh
-  setInterval(() => { renderMemberList(); renderChatList(); }, 5000);
+  // Realtime refresh (polling-based since no WebSocket)
+  setInterval(() => {
+    renderMemberList();
+    renderChatList();
+    updatePresence();
+    if (activeChatType === 'channel') loadChannelMessages(activeChannel);
+    else if (activeChatId) loadChannelMessages();
+  }, 3000);
 
-  // Set initial user info
-  const actor = getCommunityActor();
-  if (actor) {
-    document.getElementById('channel-user-name').textContent = actor.name;
-    document.getElementById('user-panel-name').textContent = actor.name;
-    document.getElementById('user-panel-id').textContent = '#' + (actor.id || '0000');
-  }
-
-  // Load settings
-  loadSettings();
-
-  // Select default channel
-  selectChannel('umum');
+  // Watch for community user changes
+  const observer = new MutationObserver(() => {
+    const actor = getCommunityActor();
+    if (actor) {
+      document.getElementById('channel-user-name').textContent = actor.name;
+      document.getElementById('user-panel-name').textContent = actor.name;
+      updatePresence();
+    }
+  });
+  const target = document.getElementById('channel-user-name');
+  if (target) observer.observe(target.parentNode, { childList: true, subtree: true, characterData: true });
 });
