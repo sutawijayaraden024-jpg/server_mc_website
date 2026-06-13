@@ -1351,7 +1351,7 @@ function startChatPolling() {
     if ((communityOverlayOpen || currentPage === 'komunitas') && getCommunityActor()) {
       loadCommunityChat();
     }
-  }, 2000);
+  }, 5000);
 }
 
 function stopChatPolling() {

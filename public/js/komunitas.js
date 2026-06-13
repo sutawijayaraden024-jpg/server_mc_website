@@ -958,24 +958,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Realtime refresh (polling-based since no WebSocket)
+  // Realtime refresh (using shared polling from app.js, add member/presence only)
   setInterval(() => {
+    updateMemberCount();
     renderMemberList();
-    renderChatList();
     updatePresence();
-    if (activeChatType === 'channel') loadChannelMessages(activeChannel);
-    else if (activeChatId) loadChannelMessages();
-  }, 3000);
+  }, 5000);
 
-  // Watch for community user changes
-  const observer = new MutationObserver(() => {
-    const actor = getCommunityActor();
-    if (actor) {
-      document.getElementById('channel-user-name').textContent = actor.name;
-      document.getElementById('user-panel-name').textContent = actor.name;
-      updatePresence();
-    }
-  });
-  const target = document.getElementById('channel-user-name');
-  if (target) observer.observe(target.parentNode, { childList: true, subtree: true, characterData: true });
 });
