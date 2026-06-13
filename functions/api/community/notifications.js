@@ -1,214 +1,70 @@
 // Notifications API
-// Handles real-time notifications for mentions, replies, friend requests, announcements, music updates
+// Handles notification retrieval, read status, and management
 
-import { verifySession } from '../../_lib/auth.js';
-import { rateLimit } from '../../_lib/rate-limit.js';
+import { json } from '../../_lib/store.js';
 
-const notificationRateLimit = rateLimit({
-  windowMs: 60 * 1000,
-  max: 50
-});
+export async function onRequestOptions() {
+  return json({ ok: true });
+}
 
-export async function onRequestGet(context) {
+export async function onRequestGet({ request, env }) {
   try {
-    const { request, env } = context;
     const url = new URL(request.url);
-    const unreadOnly = url.searchParams.get('unread') === 'true';
-    const type = url.searchParams.get('type');
-    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const email = String(url.searchParams.get('email') || '').toLowerCase();
     
-    const session = await verifySession(request, env);
-    if (!session) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    if (!email) {
+      return json({ ok: false, message: 'email is required' }, { status: 400 });
     }
     
-    let query = `
-      SELECT * FROM notifications
-      WHERE user_id = ?
-    `;
-    const params = [session.userId];
+    // Load community state (which includes notifications if stored)
+    const stored = env?.SERVER_MC_KV 
+      ? await env.SERVER_MC_KV.get('community', { type: 'json' })
+      : null;
     
-    if (unreadOnly) {
-      query += ` AND is_read = false`;
-    }
+    const notifications = stored?.notifications 
+      ? stored.notifications.filter(n => n.user_id === email).slice(0, 50)
+      : [];
     
-    if (type) {
-      query += ` AND type = ?`;
-      params.push(type);
-    }
-    
-    query += ` ORDER BY created_at DESC LIMIT ?`;
-    params.push(limit);
-    
-    const notifications = await env.DB.prepare(query).bind(...params).all();
-    
-    // Get unread count
-    const unreadCount = await env.DB.prepare(`
-      SELECT COUNT(*) as count FROM notifications
-      WHERE user_id = ? AND is_read = false
-    `).bind(session.userId).first();
-    
-    return new Response(JSON.stringify({ 
-      notifications,
-      unreadCount: unreadCount.count
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
+    return json({ ok: true, notifications });
   } catch (error) {
     console.error('Notifications error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ ok: false, message: 'Internal error' }, { status: 500 });
   }
 }
 
-export async function onRequestPost(context) {
+export async function onRequestPost({ request, env }) {
   try {
-    const { request, env } = context;
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const { action, notificationId, email } = body;
     
-    const rateLimitResult = await notificationRateLimit(env, request);
-    if (!rateLimitResult.success) {
-      return new Response(JSON.stringify({ error: 'Too many requests' }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' }
+    if (!email) {
+      return json({ ok: false, message: 'email is required' }, { status: 400 });
+    }
+    
+    // Load community state
+    const stored = env?.SERVER_MC_KV 
+      ? await env.SERVER_MC_KV.get('community', { type: 'json' })
+      : { notifications: [] };
+    
+    if (!stored.notifications) stored.notifications = [];
+    
+    if (action === 'mark_read' && notificationId) {
+      const notif = stored.notifications.find(n => n.id === notificationId && n.user_id === email);
+      if (notif) notif.is_read = true;
+    } else if (action === 'mark_all_read') {
+      stored.notifications.forEach(n => {
+        if (n.user_id === email) n.is_read = true;
       });
     }
     
-    const session = await verifySession(request, env);
-    if (!session) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    // Save back to KV
+    if (env?.SERVER_MC_KV) {
+      await env.SERVER_MC_KV.put('community', JSON.stringify(stored));
     }
     
-    const { action, notificationId, userId, type, title, content, data } = body;
-    
-    if (action === 'mark_read') {
-      if (!notificationId) {
-        return new Response(JSON.stringify({ error: 'notificationId is required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      
-      // Check ownership
-      const notification = await env.DB.prepare(`
-        SELECT * FROM notifications WHERE id = ? AND user_id = ?
-      `).bind(notificationId, session.userId).first();
-      
-      if (!notification) {
-        return new Response(JSON.stringify({ error: 'Notification not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      
-      await env.DB.prepare(`
-        UPDATE notifications SET is_read = true WHERE id = ?
-      `).bind(notificationId).run();
-      
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    if (action === 'mark_all_read') {
-      await env.DB.prepare(`
-        UPDATE notifications SET is_read = true
-        WHERE user_id = ? AND is_read = false
-      `).bind(session.userId).run();
-      
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    if (action === 'create') {
-      // Only admins can create notifications for other users
-      if (!userId || !type || !title) {
-        return new Response(JSON.stringify({ error: 'userId, type, and title are required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      
-      const validTypes = ['mention', 'reply', 'friend_request', 'announcement', 'music_update', 'system'];
-      if (!validTypes.includes(type)) {
-        return new Response(JSON.stringify({ error: 'Invalid notification type' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      
-      const notification = await env.DB.prepare(`
-        INSERT INTO notifications (user_id, type, title, content, data)
-        VALUES (?, ?, ?, ?, ?)
-        RETURNING *
-      `).bind(userId, type, title, content || null, JSON.stringify(data || {})).first();
-      
-      return new Response(JSON.stringify({ notification }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    return new Response(JSON.stringify({ error: 'Invalid action' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
+    return json({ ok: true });
   } catch (error) {
     console.error('Notifications error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
-export async function onRequestDelete(context) {
-  try {
-    const { request, env } = context;
-    const url = new URL(request.url);
-    const notificationId = url.pathname.split('/').pop();
-    
-    const session = await verifySession(request, env);
-    if (!session) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Check ownership
-    const notification = await env.DB.prepare(`
-      SELECT * FROM notifications WHERE id = ? AND user_id = ?
-    `).bind(notificationId, session.userId).first();
-    
-    if (!notification) {
-      return new Response(JSON.stringify({ error: 'Notification not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    await env.DB.prepare(`DELETE FROM notifications WHERE id = ?`).bind(notificationId).run();
-    
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-  } catch (error) {
-    console.error('Notification deletion error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ ok: false, message: 'Internal error' }, { status: 500 });
   }
 }

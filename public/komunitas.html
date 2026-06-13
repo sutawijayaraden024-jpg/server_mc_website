@@ -87,8 +87,9 @@
             <div class="discord-server-icon" onclick="showMusicPlaylist()" title="Playlist Musik">
               <span>🎵</span>
             </div>
-            <div class="discord-server-icon" onclick="showNotifications()" title="Notifikasi">
+            <div class="discord-server-icon" onclick="showNotifications()" title="Notifikasi" style="position:relative;">
               <span>🔔</span>
+              <span id="notification-badge" class="notification-badge hidden">0</span>
             </div>
             <div class="discord-server-icon" onclick="showFriends()" title="Teman">
               <span>👥</span>
@@ -99,7 +100,7 @@
             
             <div class="discord-server-divider"></div>
             
-            <div class="discord-server-icon" onclick="openCommunitySettings()" title="Pengaturan">
+            <div class="discord-server-icon" onclick="showSettingsModal()" title="Pengaturan">
               <span>⚙️</span>
             </div>
             

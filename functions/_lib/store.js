@@ -65,8 +65,6 @@ export function normalizeUser(input = {}) {
   const known = KNOWN_XUIDS.find(item => item.email === email || item.xuid === String(input.xuid || ''));
   const xuid = String(input.xuid || known?.xuid || '').trim();
   const minecraftName = input.minecraft_name || input.minecraftName || known?.minecraft_name || '';
-  // Admin role must be derived ONLY from trusted allowlist.
-  // Prevent clients from granting themselves admin by sending role=admin.
   const isKnownAdmin = ADMIN_EMAILS.includes(email) || known?.role === 'admin';
   const role = isKnownAdmin ? 'admin' : 'member';
 
@@ -126,7 +124,6 @@ export async function loadState(env) {
     memoryStore.users = seededUsers;
     await writeJsonStorage(env, 'users', seededUsers);
   }
-  // If normalization changed any stored users (e.g. roles), write the repaired users back to KV
   try {
     if (env?.SERVER_MC_KV) {
       const original = JSON.stringify(storedUsers || []);
@@ -137,7 +134,6 @@ export async function loadState(env) {
       }
     }
   } catch (e) {
-    // ignore write errors, but keep memoryStore consistent
     memoryStore.users = users;
   }
   return { users: seededUsers, sessions, online };
@@ -277,7 +273,20 @@ export function ensureDefaultGroup(state) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       avatar: '🏯',
-      last_message: null
+      last_message: null,
+      channels: [
+        { id: createId('ch'), name: 'pengumuman', type: 'text', category: 'INFORMASI SERVER' },
+        { id: createId('ch'), name: 'umum', type: 'text', category: 'TEKS CHANNEL' },
+        { id: createId('ch'), name: 'media', type: 'text', category: 'TEKS CHANNEL' },
+        { id: createId('ch'), name: 'musik', type: 'music', category: 'MUSIC ROOM' },
+        { id: createId('ch'), name: 'bantuan', type: 'text', category: 'BANTUAN' }
+      ],
+      permissions: {
+        member: { send_messages: true, upload_files: true, create_invite: true, add_members: false, remove_members: false, manage_channels: false, manage_roles: false },
+        moderator: { send_messages: true, upload_files: true, create_invite: true, add_members: true, remove_members: true, manage_channels: false, manage_roles: false },
+        admin: { send_messages: true, upload_files: true, create_invite: true, add_members: true, remove_members: true, manage_channels: true, manage_roles: true },
+        guest: { send_messages: true, upload_files: false, create_invite: false, add_members: false, remove_members: false, manage_channels: false, manage_roles: false }
+      }
     };
     state.community.chats.unshift(defaultGroup);
   }
@@ -306,8 +315,9 @@ export function createGroupChat(state, creatorEmail, creatorName, groupName, mem
     if (email) members.add(email);
   });
 
+  const chatId = createId('group');
   const chat = {
-    id: createId('group'),
+    id: chatId,
     type: 'group',
     name: groupName.slice(0, 60),
     members: Array.from(members),
@@ -315,10 +325,51 @@ export function createGroupChat(state, creatorEmail, creatorName, groupName, mem
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     avatar: '👥',
-    last_message: null
+    last_message: null,
+    // Default roles
+    roles: {
+      owner: [normalizedCreator],
+      admins: [],
+      moderators: []
+    },
+    // Default channels
+    channels: [
+      { id: createId('ch'), name: 'pengumuman', type: 'text', category: 'INFORMASI SERVER' },
+      { id: createId('ch'), name: 'umum', type: 'text', category: 'TEKS CHANNEL' },
+      { id: createId('ch'), name: 'media', type: 'text', category: 'TEKS CHANNEL' },
+      { id: createId('ch'), name: 'musik', type: 'music', category: 'MUSIC ROOM' },
+      { id: createId('ch'), name: 'bantuan', type: 'text', category: 'BANTUAN' }
+    ],
+    // Default permissions
+    permissions: {
+      member: { send_messages: true, upload_files: true, create_invite: true, add_members: false, remove_members: false, manage_channels: false, manage_roles: false },
+      moderator: { send_messages: true, upload_files: true, create_invite: true, add_members: true, remove_members: true, manage_channels: false, manage_roles: false },
+      admin: { send_messages: true, upload_files: true, create_invite: true, add_members: true, remove_members: true, manage_channels: true, manage_roles: true },
+      guest: { send_messages: true, upload_files: false, create_invite: false, add_members: false, remove_members: false, manage_channels: false, manage_roles: false }
+    }
   };
 
   state.community.chats.unshift(chat);
+
+  // Auto-create welcome message
+  const welcomeMsg = {
+    id: createId('msg'),
+    chat_id: chatId,
+    sender_email: 'system@servermc',
+    sender_name: 'System',
+    text: `🎉 Grup "${groupName}" telah dibuat oleh ${creatorName}! Channel tersedia: ${chat.channels.map(c => '#' + c.name).join(', ')}`,
+    created_at: new Date().toISOString(),
+    system: true
+  };
+  state.community.messages.push(welcomeMsg);
+  chat.last_message = {
+    text: welcomeMsg.text,
+    sender_name: 'System',
+    sender_email: 'system@servermc',
+    created_at: welcomeMsg.created_at
+  };
+  chat.updated_at = welcomeMsg.created_at;
+
   return chat;
 }
 
@@ -370,6 +421,26 @@ export function sendCommunityMessage(state, chatId, senderEmail, senderName, tex
   return message;
 }
 
+export function getChatPermission(chat, email) {
+  if (!chat || !chat.permissions) return null;
+  const normalizedEmail = normalizeEmail(email);
+  
+  // Check role hierarchy
+  if (chat.roles?.owner?.includes(normalizedEmail)) return 'owner';
+  if (chat.roles?.admins?.includes(normalizedEmail)) return 'admin';
+  if (chat.roles?.moderators?.includes(normalizedEmail)) return 'moderator';
+  if (chat.members?.includes(normalizedEmail)) return 'member';
+  return 'guest';
+}
+
+export function checkChatPermission(chat, email, action) {
+  const role = getChatPermission(chat, email);
+  if (!role) return false;
+  const perms = chat.permissions?.[role];
+  if (!perms) return false;
+  return perms[action] === true;
+}
+
 export async function loadCommunityState(env) {
   const stored = await readJsonStorage(env, 'community', memoryStore.community);
   memoryStore.community = {
@@ -384,4 +455,105 @@ export async function saveCommunityState(env, state) {
     memoryStore.community = state.community;
     await writeJsonStorage(env, 'community', state.community);
   }
+}
+
+// Notification helpers
+export function createNotification(state, userId, type, title, content, data = {}) {
+  if (!state.notifications) state.notifications = [];
+  const notification = {
+    id: createId('notif'),
+    user_id: userId,
+    type,
+    title: title.slice(0, 255),
+    content: content?.slice(0, 500) || '',
+    data,
+    is_read: false,
+    created_at: new Date().toISOString()
+  };
+  state.notifications.unshift(notification);
+  return notification;
+}
+
+export function getUserNotifications(state, userId, limit = 50) {
+  if (!state.notifications) return [];
+  return state.notifications
+    .filter(n => n.user_id === userId)
+    .slice(0, limit);
+}
+
+export function markNotificationRead(state, notificationId, userId) {
+  if (!state.notifications) return false;
+  const notif = state.notifications.find(n => n.id === notificationId && n.user_id === userId);
+  if (notif) {
+    notif.is_read = true;
+    return true;
+  }
+  return false;
+}
+
+export function markAllNotificationsRead(state, userId) {
+  if (!state.notifications) return;
+  state.notifications.forEach(n => {
+    if (n.user_id === userId) n.is_read = true;
+  });
+}
+
+// Friend helpers (local storage)
+export function getFriends(state, userId) {
+  if (!state.friends) return [];
+  return state.friends.filter(f => f.user_id === userId || f.friend_id === userId);
+}
+
+export function sendFriendRequest(state, userId, friendId) {
+  if (!state.friends) state.friends = [];
+  if (state.friends.some(f => f.user_id === userId && f.friend_id === friendId)) return null;
+  const request = {
+    id: createId('fr'),
+    user_id: userId,
+    friend_id: friendId,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  state.friends.push(request);
+  return request;
+}
+
+export function acceptFriendRequest(state, requestId, userId) {
+  const request = state.friends?.find(f => f.id === requestId && f.friend_id === userId);
+  if (!request) return false;
+  request.status = 'accepted';
+  request.updated_at = new Date().toISOString();
+  // Add reverse friendship
+  state.friends.push({
+    id: createId('fr'),
+    user_id: userId,
+    friend_id: request.user_id,
+    status: 'accepted',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  });
+  return true;
+}
+
+export function rejectFriendRequest(state, requestId, userId) {
+  const idx = state.friends?.findIndex(f => f.id === requestId && f.friend_id === userId);
+  if (idx === -1 || idx === undefined) return false;
+  state.friends.splice(idx, 1);
+  return true;
+}
+
+export function blockUser(state, userId, blockUserId) {
+  if (!state.friends) state.friends = [];
+  // Remove any existing friendship
+  state.friends = state.friends.filter(f => !(f.user_id === userId && f.friend_id === blockUserId) && !(f.user_id === blockUserId && f.friend_id === userId));
+  state.friends.push({
+    id: createId('fr'),
+    user_id: userId,
+    friend_id: blockUserId,
+    status: 'blocked',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  });
+  return true;
 }
