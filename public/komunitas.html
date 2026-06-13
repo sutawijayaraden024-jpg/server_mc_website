@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Komunitas Server_MC - Chat dengan sesama member">
+  <title>Komunitas - Server_MC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/komunitas.css">
+</head>
+<body>
+  <div id="toast-message" class="toast hidden"></div>
+  
+  <!-- Community Login Overlay -->
+  <div id="community-login-overlay" class="community-login-overlay hidden">
+    <div class="community-login-card">
+      <h2>Login Komunitas</h2>
+      <p class="login-subtitle">Masuk ke komunitas dengan akun yang sudah terdaftar di website.</p>
+      <div id="community-login-error" class="error-message hidden"></div>
+      <form onsubmit="handleCommunityLogin(event)" autocomplete="off">
+        <div class="form-group">
+          <label for="community-login-email">Email</label>
+          <input type="email" id="community-login-email" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label for="community-login-password">Password</label>
+          <input type="password" id="community-login-password" autocomplete="new-password" required>
+        </div>
+        <div class="community-login-actions">
+          <button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'; return false;">Kembali</button>
+          <button type="submit" class="btn btn-primary">Masuk Komunitas</button>
+        </div>
+      </form>
+      <p style="margin-top: 16px; font-size: 13px; color: var(--gray-muted); text-align: center;">
+        Belum punya akun? <a href="index.html" onclick="navigateToPage('register'); return false;">Daftar di website</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Main Community Page -->
+  <div class="community-page">
+    <!-- Header -->
+    <header class="community-header">
+      <div class="container">
+        <div class="header-content">
+          <div class="logo">
+            <div class="logo-icon">S</div>
+            <div class="logo-text">
+              <h1>Server_MC</h1>
+              <p>Komunitas</p>
+            </div>
+          </div>
+          <nav>
+            <a href="index.html">← Kembali ke Beranda</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <!-- Community Chat Interface -->
+    <main class="community-main">
+      <div class="container">
+        <!-- Stats Bar -->
+        <div class="community-stats-bar">
+          <div class="stats-item">
+            <span class="stats-icon">👥</span>
+            <span class="stats-label">Member</span>
+            <span class="stats-value" id="total-members">0</span>
+          </div>
+          <div class="stats-divider"></div>
+          <div class="stats-item">
+            <span class="stats-icon">🟢</span>
+            <span class="stats-label">Online</span>
+            <span class="stats-value" id="total-active-members">0</span>
+          </div>
+          <div class="stats-divider"></div>
+          <div class="stats-item">
+            <span class="stats-icon">💬</span>
+            <span class="stats-label">Chat</span>
+            <span class="stats-value" id="total-chats">0</span>
+          </div>
+          <div class="stats-divider"></div>
+          <div class="stats-item user-info">
+            <span class="stats-icon">👤</span>
+            <span class="stats-value" id="current-user-name">Guest</span>
+            <button class="btn-icon" onclick="openCommunitySettings()" title="Pengaturan">⚙</button>
+          </div>
+        </div>
+
+        <!-- WhatsApp-style Chat Interface -->
+        <div class="whatsapp-app">
+          <!-- Left Sidebar - Chat List -->
+          <aside class="chat-sidebar" id="chat-sidebar">
+            <div class="chat-sidebar-header">
+              <div class="sidebar-user-info">
+                <div class="sidebar-avatar" id="sidebar-user-avatar">👤</div>
+                <div class="sidebar-user-details">
+                  <span class="sidebar-user-name" id="sidebar-user-name">Guest</span>
+                  <span class="sidebar-user-status" id="sidebar-user-status">Offline</span>
+                </div>
+              </div>
+              <div class="sidebar-actions">
+                <button type="button" class="btn-icon" onclick="showNewGroupModal()" title="Buat Grup">👥</button>
+                <button type="button" class="btn-icon" onclick="showNewDmModal()" title="Chat Baru">💬</button>
+                <button type="button" class="btn-icon" onclick="openCommunitySettings()" title="Pengaturan">⚙</button>
+              </div>
+            </div>
+            
+            <div class="chat-search-container">
+              <input type="search" id="chat-search" placeholder="Cari chat atau nama member..." autocomplete="off" oninput="filterChatList()">
+              <button type="button" class="search-icon">🔍</button>
+            </div>
+
+            <div id="chat-list" class="chat-list">
+              <div class="loading chat-loading">
+                <div class="spinner"></div>
+                <p>Memuat chat...</p>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Right Panel - Chat View -->
+          <section class="chat-main" id="chat-main">
+            <!-- Empty State -->
+            <div class="chat-empty" id="chat-empty-state">
+              <div class="chat-empty-icon">💬</div>
+              <h3>Komunitas Server_MC</h3>
+              <p>Pilih percakapan untuk mulai chatting</p>
+              <p class="chat-empty-sub">Buat grup baru atau mulai chat pribadi dengan member lain.</p>
+            </div>
+
+            <!-- Active Chat -->
+            <div class="chat-active hidden" id="chat-active-panel">
+              <header class="chat-header">
+                <button type="button" class="chat-back-btn" onclick="closeActiveChat()" aria-label="Kembali">←</button>
+                <div class="chat-header-info" onclick="openActiveChatProfile()" role="button" tabindex="0">
+                  <div id="chat-active-avatar" class="chat-avatar">👥</div>
+                  <div class="chat-header-details">
+                    <div id="chat-active-name" class="chat-active-name">Grup</div>
+                    <div id="chat-active-meta" class="chat-meta">0 anggota</div>
+                  </div>
+                </div>
+                <div class="chat-header-actions">
+                  <button type="button" class="btn-icon" onclick="openChatSettings()" title="Info Chat">ℹ</button>
+                  <button type="button" class="btn-icon" onclick="openActiveChatProfile()" title="Profil">👤</button>
+                </div>
+              </header>
+              
+              <div id="chat-messages" class="chat-messages"></div>
+              
+              <form class="chat-compose" onsubmit="sendCommunityMessage(event)">
+                <button type="button" class="btn-icon compose-emoji" title="Emoji">😊</button>
+                <button type="button" class="btn-icon compose-attach" title="Lampiran">📎</button>
+                <input type="text" id="chat-message-input" placeholder="Ketik pesan..." maxlength="2000" autocomplete="off">
+                <button type="submit" class="btn-icon compose-send" aria-label="Kirim">➤</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Buat Grup -->
+  <div id="new-group-modal" class="chat-modal hidden" onclick="if(event.target===this) hideNewGroupModal();">
+    <div class="chat-modal-card">
+      <div class="chat-modal-header">
+        <h3>Buat Grup Baru</h3>
+        <button type="button" class="chat-modal-close" onclick="hideNewGroupModal(); return false;">×</button>
+      </div>
+      <form onsubmit="handleCreateGroup(event)">
+        <div class="form-group">
+          <label for="group-name">Nama Grup</label>
+          <input type="text" id="group-name" maxlength="60" placeholder="Contoh: Builder Squad" required>
+        </div>
+        <div class="form-group">
+          <label>Pilih Anggota</label>
+          <div id="group-member-picker" class="member-picker"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Buat Grup</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Chat Pribadi -->
+  <div id="new-dm-modal" class="chat-modal hidden" onclick="if(event.target===this) hideNewDmModal();">
+    <div class="chat-modal-card">
+      <div class="chat-modal-header">
+        <h3>Mulai Chat Pribadi</h3>
+        <button type="button" class="chat-modal-close" onclick="hideNewDmModal(); return false;">×</button>
+      </div>
+      <input type="search" id="dm-member-search" placeholder="Cari member..." autocomplete="off" oninput="filterDmMemberList()">
+      <div id="dm-member-list" class="member-picker dm-member-list"></div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profile-modal" class="chat-modal hidden" onclick="if(event.target===this) hideProfileModal();">
+    <div class="chat-modal-card profile-modal-card">
+      <div class="chat-modal-header">
+        <h3>Detail Akun</h3>
+        <button type="button" class="chat-modal-close" onclick="hideProfileModal(); return false;">×</button>
+      </div>
+      <div class="profile-header">
+        <div id="profile-avatar" class="profile-avatar-large">👤</div>
+        <div id="profile-name" class="profile-name">Member</div>
+        <span id="profile-role" class="profile-role-badge">Member</span>
+      </div>
+      <div id="profile-details"></div>
+      <div class="profile-actions">
+        <button type="button" class="btn btn-primary" id="profile-chat-btn" onclick="profileStartChat(); return false;">Kirim Pesan</button>
+        <button type="button" class="btn btn-secondary" onclick="hideProfileModal(); return false;">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Settings Modal -->
+  <div id="chat-settings-modal" class="chat-modal hidden" onclick="if(event.target===this) hideChatSettingsModal();">
+    <div class="chat-modal-card">
+      <div class="chat-modal-header">
+        <h3>Info Chat</h3>
+        <button type="button" class="chat-modal-close" onclick="hideChatSettingsModal(); return false;">×</button>
+      </div>
+      <div id="chat-settings-content"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/komunitas.js"></script>
+</body>
+</html>
