@@ -48,8 +48,6 @@ const MusicEngine = {
     this.audio.addEventListener('ended', () => this.onTrackEnd());
     this.audio.addEventListener('loadedmetadata', () => {
       const totalStr = this.formatTime(this.audio.duration);
-      const nanoTotal = document.getElementById('nano-total-time');
-      if (nanoTotal) nanoTotal.textContent = totalStr;
       const bubbleTotal = document.getElementById('bubble-total-time');
       if (bubbleTotal) bubbleTotal.textContent = totalStr;
     });
@@ -83,9 +81,7 @@ const MusicEngine = {
     this.currentTrack = track;
     this.audio.src = track.track_url || '';
     this.audio.load();
-    // Update Nano Player
-    document.getElementById('nano-title').textContent = track.track_name || 'No Track';
-    // Update Bubble Player
+    // Update Bubble Player only
     document.getElementById('bubble-title').textContent = track.track_name || 'No Track';
     document.getElementById('bubble-artist').textContent = track.artist || '-';
     if (this.isPlaying) this.audio.play().catch(() => {});
@@ -130,7 +126,7 @@ const MusicEngine = {
   seek(position) { if (this.audio && this.audio.duration) this.audio.currentTime = (position / 100) * this.audio.duration; },
 
   showPlayer() {
-    document.getElementById('nano-player')?.classList.remove('hidden');
+    // Only show Bubble Player (no Nano Player bottom bar)
     document.getElementById('bubble-toggle')?.classList.remove('hidden');
   },
 
@@ -138,20 +134,12 @@ const MusicEngine = {
     if (!this.audio || !this.audio.duration) return;
     const pct = (this.audio.currentTime / this.audio.duration) * 100;
     const pctStr = pct + '%';
-    // Nano
-    const nanoFill = document.getElementById('nano-progress-fill');
-    if (nanoFill) nanoFill.style.width = pctStr;
-    const nanoTime = document.getElementById('nano-current-time');
-    if (nanoTime) nanoTime.textContent = this.formatTime(this.audio.currentTime);
-    // Bubble
+    // Bubble Player only
     const bubbleFill = document.getElementById('bubble-progress-fill');
     if (bubbleFill) bubbleFill.style.width = pctStr;
     const bubbleTime = document.getElementById('bubble-current-time');
     if (bubbleTime) bubbleTime.textContent = this.formatTime(this.audio.currentTime);
-    // Total time (both)
     const totalStr = this.formatTime(this.audio.duration);
-    const nanoTotal = document.getElementById('nano-total-time');
-    if (nanoTotal) nanoTotal.textContent = totalStr;
     const bubbleTotal = document.getElementById('bubble-total-time');
     if (bubbleTotal) bubbleTotal.textContent = totalStr;
   },
@@ -160,8 +148,6 @@ const MusicEngine = {
 
   updatePlayBtn() {
     const sym = this.isPlaying ? '⏸' : '▶';
-    const nanoBtn = document.getElementById('nano-play-btn');
-    if (nanoBtn) nanoBtn.textContent = sym;
     const bubbleBtn = document.getElementById('bubble-play-btn');
     if (bubbleBtn) bubbleBtn.textContent = sym;
   },
@@ -1152,12 +1138,6 @@ document.addEventListener('DOMContentLoaded', function() {
   renderChatList();
   selectChannel('umum');
   loadSettings();
-
-  // Nano progress bar seek
-  document.querySelector('.nano-progress-track')?.addEventListener('click', function(e) {
-    const rect = this.getBoundingClientRect();
-    MusicEngine.seek(((e.clientX - rect.left) / rect.width) * 100);
-  });
 
   // Bubble progress bar seek
   document.querySelector('.bubble-progress-track')?.addEventListener('click', function(e) {
